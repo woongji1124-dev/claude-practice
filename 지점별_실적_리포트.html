@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026년 상반기 지점별 실적 리포트</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1: #2a78d6; /* 강남지점 */
+    --series-2: #eb6834; /* 여의도지점 */
+    --series-3: #1baf7a; /* 판교지점 */
+    --series-4: #eda100; /* 대구지점 */
+    --series-5: #e87ba4; /* 천안지점 */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --series-5: #d55181;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+  h1 { font-size: 21px; margin: 0 0 6px; }
+  header p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+  .theme-toggle {
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .theme-toggle:hover { color: var(--text-primary); }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px 24px;
+    margin-bottom: 24px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 2px; }
+  .card .sub { font-size: 12.5px; color: var(--text-muted); margin: 0 0 14px; }
+
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .tick text { fill: var(--text-muted); font-size: 11px; }
+  .grid line { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+  .baseline { stroke: var(--baseline); stroke-width: 1; shape-rendering: crispEdges; }
+  .bar-label { fill: var(--text-secondary); font-size: 12.5px; }
+  .bar-value { fill: var(--text-primary); font-size: 12.5px; font-weight: 600; }
+  .bar-rect { cursor: pointer; }
+  .bar-rect:hover { opacity: 0.85; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px 20px; margin: 2px 0 16px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend-swatch { width: 14px; height: 2px; border-radius: 1px; flex: 0 0 auto; }
+
+  .line-path { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .point { stroke-width: 2; }
+  .hit { fill: transparent; cursor: pointer; }
+  .end-label { font-size: 12px; font-weight: 600; }
+
+  .crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; pointer-events: none; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+    opacity: 0;
+    transform: translate(-9999px, -9999px);
+    min-width: 150px;
+    z-index: 5;
+  }
+  .tooltip .t-month { color: var(--text-muted); font-size: 11.5px; margin-bottom: 6px; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+  .tooltip .t-key { width: 10px; height: 2px; flex: 0 0 auto; }
+  .tooltip .t-name { color: var(--text-secondary); flex: 1; }
+  .tooltip .t-val { color: var(--text-primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .chart-shell { position: relative; }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+  table.data-table caption { text-align: left; color: var(--text-muted); font-size: 12px; margin-bottom: 8px; }
+  table.data-table th, table.data-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  table.data-table th:first-child, table.data-table td:first-child { text-align: left; font-variant-numeric: normal; }
+  table.data-table thead th { color: var(--text-muted); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--baseline); }
+  table.data-table tbody tr:last-child td { font-weight: 700; border-bottom: none; }
+  .key-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+
+  footer { color: var(--text-muted); font-size: 12px; line-height: 1.6; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>2026년 상반기(1~6월) 지점별 실적 리포트</h1>
+      <p>거래대금 기준 상위 5개 지점의 순위와 월별 추이</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button">다크 모드</button>
+  </header>
+
+  <section class="card">
+    <h2>상반기 거래대금 상위 5개 지점</h2>
+    <p class="sub">2026년 1~6월 합계, 단위: 억원</p>
+    <div id="barChart"></div>
+  </section>
+
+  <section class="card">
+    <h2>월별 거래대금 추이</h2>
+    <p class="sub">2026년 1~6월, 단위: 억원 · 점/선에 마우스를 올리면 상세 값을 볼 수 있습니다</p>
+    <div class="legend" id="legend"></div>
+    <div class="chart-shell">
+      <div id="lineChart"></div>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>데이터 표</h2>
+    <p class="sub">차트에 쓰인 원본 수치 (지점별_실적_더미데이터_정리본.xlsx 기준)</p>
+    <div id="tableWrap"></div>
+  </section>
+
+  <footer>
+    출처: 지점별_실적_더미데이터_정리본.xlsx · 지점별_월간실적 시트 (결측·중복·형식 오류 정리본).<br>
+    거래대금(억원) 기준으로 상반기 합계를 계산해 상위 5개 지점을 선정했습니다.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var months = ["1월", "2월", "3월", "4월", "5월", "6월"];
+  var branches = [
+    { name: "강남지점",  color: "var(--series-1)", values: [1256.1, 1367.3, 1443.4, 1458.7, 1574.7, 1540.1] },
+    { name: "여의도지점", color: "var(--series-2)", values: [1170.3, 1067.7, 1298.1, 1333.7, 1495.8, 1479.8] },
+    { name: "판교지점",  color: "var(--series-3)", values: [812.8,  856.7,  1107.2, 1199.7, 1250.9, 1245.7] },
+    { name: "대구지점",  color: "var(--series-4)", values: [814.8,  812.6,  915.7,  1076.6, 1076.3, 1251.4] },
+    { name: "천안지점",  color: "var(--series-5)", values: [812.2,  933.0,  892.9,  907.2,  999.7,  1053.9] }
+  ];
+
+  branches.forEach(function (b) {
+    b.total = b.values.reduce(function (a, v) { return a + v; }, 0);
+  });
+
+  function fmt(v) {
+    return v.toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+  }
+
+  function svgEl(tag, attrs) {
+    var el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  // ---------- Ranking bar chart ----------
+  function buildBarChart() {
+    var ranked = branches.slice().sort(function (a, b) { return b.total - a.total; });
+    var W = 760, rowH = 46, barH = 22, top = 10, bottom = 20;
+    var left = 92, right = 74;
+    var H = top + bottom + rowH * ranked.length;
+    var plotW = W - left - right;
+    var domainMax = 9000;
+    var ticks = [0, 2250, 4500, 6750, 9000];
+
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "지점별 상반기 거래대금 순위 막대그래프" });
+
+    // gridlines
+    var gGrid = svgEl("g", { "class": "grid" });
+    ticks.forEach(function (t) {
+      var x = left + (t / domainMax) * plotW;
+      gGrid.appendChild(svgEl("line", { x1: x, x2: x, y1: top, y2: H - bottom }));
+      var tx = svgEl("text", { x: x, y: H - bottom + 16, "text-anchor": "middle", "class": "tick" });
+      tx.textContent = t.toLocaleString("ko-KR");
+      svg.appendChild(tx);
+    });
+    svg.appendChild(gGrid);
+    svg.appendChild(svgEl("line", { x1: left, x2: left, y1: top, y2: H - bottom, "class": "baseline" }));
+
+    ranked.forEach(function (b, i) {
+      var y = top + i * rowH + (rowH - barH) / 2;
+      var w = (b.total / domainMax) * plotW;
+      var color = b.color;
+
+      var rect = svgEl("rect", {
+        x: left, y: y, width: Math.max(w, barH), height: barH, rx: 4, ry: 4,
+        fill: color, "class": "bar-rect"
+      });
+      // square off the baseline (left) corners
+      var patch = svgEl("rect", { x: left, y: y, width: 4, height: barH, fill: color });
+
+      var titleEl = svgEl("title", {});
+      titleEl.textContent = b.name + ": " + fmt(b.total) + "억원";
+      rect.appendChild(titleEl);
+
+      svg.appendChild(rect);
+      svg.appendChild(patch);
+
+      var label = svgEl("text", { x: left - 10, y: y + barH / 2 + 4, "text-anchor": "end", "class": "bar-label" });
+      label.textContent = b.name;
+      svg.appendChild(label);
+
+      var value = svgEl("text", { x: left + w + 8, y: y + barH / 2 + 4, "class": "bar-value" });
+      value.textContent = fmt(b.total);
+      svg.appendChild(value);
+    });
+
+    document.getElementById("barChart").appendChild(svg);
+  }
+
+  // ---------- Legend ----------
+  function buildLegend() {
+    var wrap = document.getElementById("legend");
+    branches.forEach(function (b) {
+      var item = document.createElement("div");
+      item.className = "legend-item";
+      var sw = document.createElement("span");
+      sw.className = "legend-swatch";
+      sw.style.background = b.color;
+      var label = document.createElement("span");
+      label.textContent = b.name;
+      item.appendChild(sw);
+      item.appendChild(label);
+      wrap.appendChild(item);
+    });
+  }
+
+  // ---------- Line chart ----------
+  function buildLineChart() {
+    var W = 760, H = 380;
+    var left = 56, right = 16, top = 16, bottom = 34;
+    var plotW = W - left - right, plotH = H - top - bottom;
+    var domainMax = 1700;
+    var ticks = [0, 400, 800, 1200, 1600];
+
+    function xAt(i) { return left + (i / (months.length - 1)) * plotW; }
+    function yAt(v) { return top + plotH - (v / domainMax) * plotH; }
+
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "5개 지점의 월별 거래대금 추이 선그래프" });
+
+    var gGrid = svgEl("g", { "class": "grid" });
+    ticks.forEach(function (t) {
+      var y = yAt(t);
+      gGrid.appendChild(svgEl("line", { x1: left, x2: W - right, y1: y, y2: y }));
+      var tx = svgEl("text", { x: left - 10, y: y + 4, "text-anchor": "end", "class": "tick" });
+      tx.textContent = t.toLocaleString("ko-KR");
+      svg.appendChild(tx);
+    });
+    svg.appendChild(gGrid);
+    svg.appendChild(svgEl("line", { x1: left, x2: W - right, y1: H - bottom, y2: H - bottom, "class": "baseline" }));
+
+    months.forEach(function (m, i) {
+      var tx = svgEl("text", { x: xAt(i), y: H - bottom + 18, "text-anchor": "middle", "class": "tick" });
+      tx.textContent = m;
+      svg.appendChild(tx);
+    });
+
+    // lines
+    branches.forEach(function (b) {
+      var d = b.values.map(function (v, i) { return (i === 0 ? "M" : "L") + xAt(i).toFixed(1) + "," + yAt(v).toFixed(1); }).join(" ");
+      svg.appendChild(svgEl("path", { d: d, stroke: b.color, "class": "line-path" }));
+    });
+
+    // end labels only where the last-month values are clearly separated (>=25 apart)
+    var lastVals = branches.map(function (b) { return b.values[b.values.length - 1]; }).sort(function (a, c) { return a - c; });
+    branches.forEach(function (b) {
+      var last = b.values[b.values.length - 1];
+      var crowded = branches.some(function (o) { return o !== b && Math.abs(o.values[o.values.length - 1] - last) < 25; });
+      if (!crowded) {
+        var lbl = svgEl("text", { x: xAt(months.length - 1) + 8, y: yAt(last) + 4, "class": "end-label" });
+        lbl.setAttribute("fill", "var(--text-secondary)");
+        lbl.textContent = b.name;
+        svg.appendChild(lbl);
+      }
+    });
+
+    // points + hit targets
+    var pointsLayer = svgEl("g", {});
+    branches.forEach(function (b) {
+      b.values.forEach(function (v, i) {
+        pointsLayer.appendChild(svgEl("circle", {
+          cx: xAt(i), cy: yAt(v), r: 4, fill: b.color, stroke: "var(--surface-1)", "class": "point"
+        }));
+      });
+    });
+    svg.appendChild(pointsLayer);
+
+    var crosshair = svgEl("line", { x1: left, x2: left, y1: top, y2: H - bottom, "class": "crosshair" });
+    svg.appendChild(crosshair);
+
+    // full-height hit columns per month, for hover
+    var hitLayer = svgEl("g", {});
+    var colW = plotW / (months.length - 1);
+    months.forEach(function (m, i) {
+      var hx = xAt(i) - colW / 2;
+      hitLayer.appendChild(svgEl("rect", {
+        x: Math.max(left, hx), y: top, width: colW, height: plotH, "class": "hit", "data-index": i
+      }));
+    });
+    svg.appendChild(hitLayer);
+
+    var container = document.getElementById("lineChart");
+    container.appendChild(svg);
+
+    var tooltip = document.getElementById("tooltip");
+    var shell = document.querySelector(".chart-shell");
+
+    function showTooltip(index, clientX) {
+      crosshair.setAttribute("x1", xAt(index));
+      crosshair.setAttribute("x2", xAt(index));
+      crosshair.style.opacity = 1;
+
+      tooltip.innerHTML = "";
+      var monthLine = document.createElement("div");
+      monthLine.className = "t-month";
+      monthLine.textContent = "2026년 " + months[index];
+      tooltip.appendChild(monthLine);
+
+      var rows = branches.map(function (b) { return { name: b.name, color: b.color, value: b.values[index] }; });
+      rows.sort(function (a, c) { return c.value - a.value; });
+      rows.forEach(function (r) {
+        var row = document.createElement("div");
+        row.className = "t-row";
+        var key = document.createElement("span");
+        key.className = "t-key";
+        key.style.background = r.color;
+        var name = document.createElement("span");
+        name.className = "t-name";
+        name.textContent = r.name;
+        var val = document.createElement("span");
+        val.className = "t-val";
+        val.textContent = fmt(r.value);
+        row.appendChild(key);
+        row.appendChild(name);
+        row.appendChild(val);
+        tooltip.appendChild(row);
+      });
+
+      var shellRect = shell.getBoundingClientRect();
+      var tx = clientX - shellRect.left + 14;
+      if (tx + 190 > shellRect.width) tx = clientX - shellRect.left - 190;
+      tooltip.style.transform = "translate(" + tx + "px, 8px)";
+      tooltip.style.opacity = 1;
+    }
+
+    function hideTooltip() {
+      crosshair.style.opacity = 0;
+      tooltip.style.opacity = 0;
+      tooltip.style.transform = "translate(-9999px,-9999px)";
+    }
+
+    hitLayer.querySelectorAll(".hit").forEach(function (rect) {
+      var idx = parseInt(rect.getAttribute("data-index"), 10);
+      rect.addEventListener("pointermove", function (e) { showTooltip(idx, e.clientX); });
+      rect.addEventListener("pointerenter", function (e) { showTooltip(idx, e.clientX); });
+      rect.addEventListener("pointerleave", hideTooltip);
+      rect.addEventListener("focus", function () {
+        var box = rect.getBoundingClientRect();
+        showTooltip(idx, box.left + box.width / 2);
+      });
+      rect.setAttribute("tabindex", "0");
+    });
+    shell.addEventListener("pointerleave", hideTooltip);
+  }
+
+  // ---------- Data table ----------
+  function buildTable() {
+    var wrap = document.getElementById("tableWrap");
+    var table = document.createElement("table");
+    table.className = "data-table";
+
+    var caption = document.createElement("caption");
+    caption.textContent = "지점 · 월별 거래대금(억원) 및 상반기 합계";
+    table.appendChild(caption);
+
+    var thead = document.createElement("thead");
+    var headRow = document.createElement("tr");
+    var thBranch = document.createElement("th");
+    thBranch.textContent = "지점";
+    headRow.appendChild(thBranch);
+    months.forEach(function (m) {
+      var th = document.createElement("th");
+      th.textContent = m;
+      headRow.appendChild(th);
+    });
+    var thTotal = document.createElement("th");
+    thTotal.textContent = "상반기 합계";
+    headRow.appendChild(thTotal);
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    var tbody = document.createElement("tbody");
+    var ranked = branches.slice().sort(function (a, b) { return b.total - a.total; });
+    ranked.forEach(function (b) {
+      var tr = document.createElement("tr");
+      var tdName = document.createElement("td");
+      var dot = document.createElement("span");
+      dot.className = "key-dot";
+      dot.style.background = b.color;
+      tdName.appendChild(dot);
+      tdName.appendChild(document.createTextNode(b.name));
+      tr.appendChild(tdName);
+      b.values.forEach(function (v) {
+        var td = document.createElement("td");
+        td.textContent = fmt(v);
+        tr.appendChild(td);
+      });
+      var tdTotal = document.createElement("td");
+      tdTotal.textContent = fmt(b.total);
+      tr.appendChild(tdTotal);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
+  // ---------- Theme toggle ----------
+  function initThemeToggle() {
+    var btn = document.getElementById("themeToggle");
+    var stored = localStorage.getItem("branch-report-theme");
+    if (stored) document.documentElement.setAttribute("data-theme", stored);
+    function label() {
+      var current = document.documentElement.getAttribute("data-theme");
+      var isDark = current === "dark" || (!current && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      btn.textContent = isDark ? "라이트 모드" : "다크 모드";
+    }
+    btn.addEventListener("click", function () {
+      var current = document.documentElement.getAttribute("data-theme");
+      var isDark = current === "dark" || (!current && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      var next = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("branch-report-theme", next);
+      label();
+    });
+    label();
+  }
+
+  buildBarChart();
+  buildLegend();
+  buildLineChart();
+  buildTable();
+  initThemeToggle();
+})();
+</script>
+</body>
+</html>

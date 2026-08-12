@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:securities.koreainvestment.com)",
+      "WebFetch(domain:www.fnnews.com)",
+      "WebFetch(domain:biz.newdaily.co.kr)",
+      "WebFetch(domain:www.youthdaily.co.kr)",
+      "WebFetch(domain:www.wikitree.co.kr)",
+      "WebFetch(domain:www.kbam.co.kr)",
+      "PowerShell(python --version; python -c \"import openpyxl; print\\('openpyxl ok'\\)\")",
+      "WebFetch(domain:www.weather.go.kr)",
+      "WebFetch(domain:www.accuweather.com)",
+      "WebFetch(domain:weather.com)",
+      "WebFetch(domain:securities.miraeasset.com)",
+      "WebFetch(domain:apps.apple.com)",
+      "WebFetch(domain:www3.kiwoom.com)",
+      "WebFetch(domain:www.kiwoom.com)",
+      "WebFetch(domain:play.google.com)",
+      "WebFetch(domain:www1.kiwoom.com)",
+      "WebFetch(domain:digital.securities.miraeasset.com)",
+      "WebFetch(domain:evt.kiwoom.com)",
+      "WebFetch(domain:www.miraeasset.com)",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\user\\\\Desktop\\\\claude-실습\\\\증권사_경쟁분석_리포트.html\"; Write-Output \"opened\")",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\user\\\\Desktop\\\\claude-실습\\\\관심종목_대시보드.html\"; Write-Output \"opened\")"
+    ]
+  }
+}

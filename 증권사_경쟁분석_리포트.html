@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>키움증권 vs 미래에셋증권 경쟁사 분석</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1: #2a78d6; /* 키움증권 */
+    --series-2: #eb6834; /* 미래에셋증권 */
+    --good:     #0ca30c;
+    --warn-bg:  #fdf3e0;
+    --warn-text:#8a5a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1: #1a1a19; --page: #0d0d0d;
+      --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+      --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5; --series-2: #d95926; --good: #0ca30c;
+      --warn-bg: #2a2210; --warn-text: #e0b34a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19; --page: #0d0d0d;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-2: #d95926; --good: #0ca30c;
+    --warn-bg: #2a2210; --warn-text: #e0b34a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--text-primary); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 56px; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  header p { margin: 0; color: var(--text-secondary); font-size: 13.5px; }
+  .theme-toggle { flex: 0 0 auto; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+  .theme-toggle:hover { color: var(--text-primary); }
+
+  .method {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; font-size: 12.5px; color: var(--text-secondary); margin: 16px 0 24px; line-height: 1.6;
+  }
+  .method b { color: var(--text-primary); }
+  .legend-key { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; }
+  .legend-key span.tag { display: inline-flex; align-items: center; gap: 4px; }
+  .tag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-ok { background: var(--good); }
+  .dot-single { background: var(--text-muted); }
+  .dot-unknown { background: transparent; border: 1px solid var(--text-muted); }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px 24px; margin-bottom: 22px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; }
+
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.cmp th, table.cmp td { padding: 9px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; text-align: left; line-height: 1.55; }
+  table.cmp thead th { color: var(--text-muted); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--baseline); position: sticky; top: 0; background: var(--surface-1); }
+  table.cmp thead th.co-1 { color: var(--series-1); }
+  table.cmp thead th.co-2 { color: var(--series-2); }
+  table.cmp td.dim { color: var(--text-secondary); font-size: 12.5px; white-space: nowrap; }
+  table.cmp sup { margin-left: 2px; }
+  table.cmp sup a { color: var(--text-muted); text-decoration: none; font-size: 10px; }
+  table.cmp sup a:hover { text-decoration: underline; }
+  .flag { display: inline-block; font-size: 10.5px; padding: 1px 6px; border-radius: 5px; margin-left: 6px; white-space: nowrap; }
+  .flag-single { background: var(--warn-bg); color: var(--warn-text); }
+  .flag-unknown { background: var(--warn-bg); color: var(--warn-text); font-weight: 600; }
+
+  .insights { list-style: none; margin: 0; padding: 0; }
+  .insights li { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--grid); }
+  .insights li:last-child { border-bottom: none; }
+  .insight-num { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--series-1); color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .insights li:nth-child(2) .insight-num { background: var(--series-2); }
+  .insights li:nth-child(3) .insight-num { background: var(--text-muted); }
+  .insight-body b { display: block; font-size: 13.5px; margin-bottom: 3px; }
+  .insight-body p { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+  footer.sources { color: var(--text-muted); font-size: 11.5px; line-height: 1.8; margin-top: 8px; }
+  footer.sources ol { padding-left: 18px; margin: 8px 0 0; }
+  footer.sources a { color: var(--text-muted); word-break: break-all; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>키움증권 vs 미래에셋증권 경쟁사 분석</h1>
+      <p>공개 정보(보도자료·앱스토어·공식 홈페이지) 기준 · 조사일 2026-08-12</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button">다크 모드</button>
+  </header>
+
+  <div class="method">
+    <b>조사 방법</b>: 회사별 서브에이전트 2개를 병렬로 실행해 각각 두 회사를 독립 조사한 뒤, 서로 겹치는 항목(앱스토어 평점, 이벤트 조건, 보도자료 날짜 등)이 일치하는지 대조했습니다. 구글플레이 평점 등 한쪽에서만 확인된 항목은 <b>단일출처</b>로 별도 표시했고, 두 서브에이전트 모두 공식 페이지에서 확인하지 못한 항목은 <b>미확인</b>으로 남겼습니다. 언론 보도·블로그·위키 등 2차 자료는 근거로 사용하지 않았습니다.
+    <div class="legend-key">
+      <span class="tag"><span class="tag-dot dot-ok"></span>표시 없음 = 2개 이상 경로에서 일치 확인</span>
+      <span class="tag"><span class="flag flag-single" style="margin-left:0;">단일출처</span> = 한 곳에서만 확인, 교차검증 안 됨</span>
+      <span class="tag"><span class="flag flag-unknown" style="margin-left:0;">미확인</span> = 허용 출처에서 확인 불가</span>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>비교표</h2>
+    <table class="cmp">
+      <thead>
+        <tr><th>항목</th><th class="co-1">키움증권</th><th class="co-2">미래에셋증권</th></tr>
+      </thead>
+      <tbody id="cmpBody"></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>시사점 3가지</h2>
+    <ul class="insights">
+      <li>
+        <div class="insight-num">1</div>
+        <div class="insight-body">
+          <b>키움은 "점유율 1위" 브랜드에 비해 앱 만족도가 낮다 — UX 개선이 최우선 과제</b>
+          <p>키움은 "21년 연속 국내 주식시장 점유율 1위"를 앱스토어·홈페이지에 전면에 내세우지만, 정작 대표 MTS(영웅문S#)의 App Store 평점은 1.8/5.0으로 미래에셋 M-STOCK(3.9/5.0)의 절반에도 못 미칩니다. 저가 수수료·HTS급 기능으로 기존 액티브 트레이더를 붙잡고 있지만, 신규 유입 채널인 앱스토어 첫인상에서는 손해를 보고 있다는 뜻입니다.</p>
+        </div>
+      </li>
+      <li>
+        <div class="insight-num">2</div>
+        <div class="insight-body">
+          <b>미래에셋은 MTS를 "종합 자산관리 허브"로, 키움은 "트레이딩 툴"로 포지셔닝</b>
+          <p>미래에셋 M-STOCK은 연금·펀드·ELS·RP·ISA·채권까지 한 앱에 묶어 "MY자산/MY연금" 화면으로 자산관리 전반을 다루는 반면, 키움 영웅문S#은 조건검색·실시간 검색·HTS급 차트 등 트레이딩 기능에 집중되어 있습니다. 두 회사가 겨냥하는 고객층(자산관리 고객 vs 액티브 트레이더)이 명확히 다르게 갈리고 있습니다.</p>
+        </div>
+      </li>
+      <li>
+        <div class="insight-num">3</div>
+        <div class="insight-body">
+          <b>신규 고객 유치는 "수수료 자체"가 아니라 "가입 이벤트 혜택" 경쟁으로 이동</b>
+          <p>두 회사 모두 표준 수수료율은 낮은 수준에서 비슷하게 유지하면서, 대신 신규·휴면 고객 대상 현금성 지원금(키움 최대 3.1만원 + 소수점 주식, 미래에셋 2만원 지원금 + 90일 수수료 면제)으로 계좌 개설을 유도하고 있습니다. 수수료 인하 경쟁보다 이벤트 설계·지급 조건의 매력도가 차별화 포인트가 되는 국면입니다.</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <footer class="sources">
+    <div>출처(전체 링크) — 각 표 항목 옆 위첨자 번호와 대응</div>
+    <ol id="sourceList"></ol>
+    <div style="margin-top:10px;">이 리포트는 회사 자체 발표·앱스토어 게시 정보를 그대로 인용한 것으로, 회사 자체 주장(예: 점유율 1위)은 제3자 검증치가 아님을 표시했습니다. 정확한 최신 수치는 각 출처 링크에서 직접 확인하시기 바랍니다.</div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var sources = [
+    "https://www3.kiwoom.com/h/ir/introduce/VHistory1View",
+    "https://www3.kiwoom.com/h/ir/introduce/VHistory2View",
+    "https://www.kiwoom.com/h/ir/main",
+    "https://apps.apple.com/kr/app/%ED%82%A4%EC%9B%80%EC%A6%9D%EA%B6%8C-%EC%98%81%EC%9B%85%EB%AC%B8s-new/id1570370057",
+    "https://play.google.com/store/apps/details?id=com.kiwoom.heromts",
+    "https://evt.kiwoom.com/e/m/home/event/VEvent20260071View",
+    "https://evt.kiwoom.com/e/m/home/event/VEvent20260066View",
+    "https://securities.miraeasset.com/newir/view/pc/kr/about/whoweare.jsp",
+    "https://apps.apple.com/kr/app/%EB%AF%B8%EB%9E%98%EC%97%90%EC%85%8B%EC%A6%9D%EA%B6%8C-m-stock/id1248716281",
+    "https://play.google.com/store/apps/details?id=com.miraeasset.trade",
+    "https://securities.miraeasset.com/public/mw/guide/html/20191119095045.html",
+    "https://digital.securities.miraeasset.com/first-time/",
+    "https://securities.miraeasset.com/newir/view/pc/kr/about/newsList.jsp"
+  ];
+
+  // rows: [dimension, kiwoomHTML, miraeHTML]
+  var rows = [
+    ["설립·주요 이력",
+      "2000-05-04 증권투자서비스 개시, 2004-04-23 코스닥 상장, 2009-08-03 코스피 이전상장" + cite([1,2]),
+      "공식 페이지에 명시적 설립연도 없음 <span class=\"flag flag-unknown\">미확인</span>" + cite([8])
+    ],
+    ["개요",
+      "대표이사 엄주성 · 서울 영등포구(TP타워) · 사업자등록 107-81-76756" + cite([3]),
+      "6대 사업부문: 브로커리지·글로벌비즈니스·IB·트레이딩·자산관리(WM)·주요투자" + cite([8])
+    ],
+    ["재무 규모",
+      "미확인 (공식 IR 페이지 수치 미노출)" + '<span class="flag flag-unknown">미확인</span>',
+      "자산 169.9조원 · 자기자본 14.3조원 (2026-03 기준)" + cite([8]) + '<span class="flag flag-single">단일출처</span>'
+    ],
+    ["대표 MTS",
+      "영웅문S#(NEW) — HTS급 차트, 조건검색/실시간 조건검색, 국내·해외 통합" + cite([4]),
+      "M-STOCK — 국내외 주식·연금·펀드·ELS·RP·ISA·채권 통합, MY자산/MY연금 화면" + cite([9])
+    ],
+    ["App Store 평점",
+      "1.8 / 5.0 · 리뷰 약 2,800개" + cite([4]),
+      "3.9 / 5.0 · 리뷰 약 7,100개" + cite([9])
+    ],
+    ["Google Play 평점",
+      "3.3 / 5.0 (리뷰 수 미확인)" + cite([5]) + '<span class="flag flag-single">단일출처</span>',
+      "3.9 / 5.0 · 리뷰 약 5.7만 · 설치 500만+" + cite([10]) + '<span class="flag flag-single">단일출처</span>'
+    ],
+    ["국내주식 표준수수료",
+      "0.015%(KRX) / 0.0145%(NXT) — 이벤트 페이지 명시" + cite([7]),
+      "온라인 0.010%+거래소수수료 (오프라인 0.486%+거래소수수료)" + cite([11]) + '<span class="flag flag-single">단일출처</span>'
+    ],
+    ["해외주식 수수료",
+      "미확인 (공식 안내 페이지 접근 실패)" + '<span class="flag flag-unknown">미확인</span>',
+      "미국주식 온라인 0.15%(최소 0.165%) / 오프라인 0.45%" + cite([11]) + '<span class="flag flag-single">단일출처</span>'
+    ],
+    ["신규·휴면고객 이벤트",
+      "휴면고객 3종혜택(’26.1.1~7.8, 최대 3.1만원+수수료할인) · 소수점주식 증정(’26.7.3~, 최대 10만원)" + cite([6,7]),
+      "투자의 시작(’26.7.1~12.31): 지원금 2만원 + 90일 수수료면제 + 이후 우대수수료 0.0036396%" + cite([12])
+    ],
+    ["최근 보도자료",
+      "미확인 — 공식 게시판 접근 오류로 목록 확인 불가" + '<span class="flag flag-unknown">미확인</span>',
+      "’26-07-03 통합보고서 발간 · ’26-07-09 Korea Bond Market Forum · ’26-07-09 코빗 협력 · ’26-07-14 채권시장 우수기관 선정 · ’26-07-27 2분기 실적 관련 발표(구체 수치는 미열람으로 미확인)" + cite([13])
+    ],
+    ["시장 지위(자체 발표)",
+      "“국내 주식시장 점유율 21년 연속 1위” — 회사 자체 주장, 제3자 검증 수치 아님" + cite([3]),
+      "점유율·순위 자체 공표 없음 <span class=\"flag flag-unknown\">미확인</span>" + cite([8])
+    ]
+  ];
+
+  function cite(nums) {
+    return nums.map(function (n) {
+      return '<sup><a href="#src' + n + '">[' + n + ']</a></sup>';
+    }).join("");
+  }
+
+  var tbody = document.getElementById("cmpBody");
+  rows.forEach(function (r) {
+    var tr = document.createElement("tr");
+    var tdDim = document.createElement("td");
+    tdDim.className = "dim";
+    tdDim.textContent = r[0];
+    var tdA = document.createElement("td");
+    tdA.innerHTML = r[1];
+    var tdB = document.createElement("td");
+    tdB.innerHTML = r[2];
+    tr.appendChild(tdDim);
+    tr.appendChild(tdA);
+    tr.appendChild(tdB);
+    tbody.appendChild(tr);
+  });
+
+  var list = document.getElementById("sourceList");
+  sources.forEach(function (url, i) {
+    var li = document.createElement("li");
+    li.id = "src" + (i + 1);
+    var a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = url;
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+
+  // theme toggle
+  var btn = document.getElementById("themeToggle");
+  var stored = localStorage.getItem("cmp-report-theme");
+  if (stored) document.documentElement.setAttribute("data-theme", stored);
+  function label() {
+    var current = document.documentElement.getAttribute("data-theme");
+    var isDark = current === "dark" || (!current && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    btn.textContent = isDark ? "라이트 모드" : "다크 모드";
+  }
+  btn.addEventListener("click", function () {
+    var current = document.documentElement.getAttribute("data-theme");
+    var isDark = current === "dark" || (!current && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = isDark ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("cmp-report-theme", next);
+    label();
+  });
+  label();
+})();
+</script>
+</body>
+</html>

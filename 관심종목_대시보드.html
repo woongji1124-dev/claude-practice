@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>나만의 관심종목 대시보드</title>
+<style>
+  /* Design tokens ported from DESIGN-discord.md — single dark-indigo theme, no light variant (brand has none). */
+  :root {
+    color-scheme: dark;
+    --canvas:         #0a0d3a;
+    --surface-indigo: #1e2353;
+    --surface-onyx:   #23272a;
+    --primary:        #5865f2;
+    --on-primary:     #ffffff;
+    --green:          #35ed7e;
+    --magenta:        #ec48bd;
+    --link:           #00b0f4;
+    --ink:            #ffffff;
+    --ink-dark:       #000000;
+    --muted:          rgba(255,255,255,0.6);
+    --hairline:       #23272a;
+    --radius-control: 16px;
+    --radius-btn:     12px;
+    --radius-card:    40px;
+    --radius-chip:    14px;
+    --radius-pill:    50px;
+    --shadow-soft:    0 3px 68px rgba(69,42,124,0.35);
+    --font-display:   'Space Grotesk', 'Hanken Grotesk', -apple-system, system-ui, sans-serif;
+    --font-sans:      'Inter', 'Plus Jakarta Sans', -apple-system, system-ui, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; color: var(--ink); font-family: var(--font-sans); }
+  body {
+    background:
+      radial-gradient(circle at 12% -10%, rgba(88,101,242,0.4), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(236,72,189,0.3), transparent 50%),
+      radial-gradient(circle at 50% 120%, rgba(88,101,242,0.25), transparent 55%),
+      var(--canvas);
+    background-attachment: fixed;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 24px 20px 48px; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    background: var(--surface-indigo); border-radius: var(--radius-control);
+    padding: 20px 24px; margin-bottom: 20px;
+  }
+  .topbar .date { font-size: 14px; color: var(--muted); margin-bottom: 6px; font-family: var(--font-sans); }
+  .topbar .greeting {
+    font-size: 26px; font-weight: 800; letter-spacing: 0.3px; line-height: 1.1;
+    font-family: var(--font-display); text-transform: uppercase; color: var(--ink);
+  }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface-indigo); border: none; border-radius: var(--radius-card);
+    padding: 28px 32px 32px; margin-bottom: 20px; transition: box-shadow 0.2s ease;
+  }
+  .card:hover { box-shadow: var(--shadow-soft); }
+  .card h2 {
+    font-family: var(--font-display); font-size: 20px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; margin: 0 0 16px; color: var(--ink);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .card h2 .count {
+    font-size: 13px; font-weight: 500; font-family: var(--font-sans); text-transform: none;
+    letter-spacing: 0; color: var(--ink); background: var(--magenta);
+    border-radius: var(--radius-chip); padding: 4px 12px;
+  }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .add-row input { flex: 1; min-width: 0; }
+  input[type="text"] {
+    background: var(--surface-onyx); border: none; border-radius: var(--radius-control);
+    padding: 12px 16px; font-size: 14px; color: var(--ink); font-family: var(--font-sans);
+    transition: box-shadow 0.15s ease;
+  }
+  input[type="text"]::placeholder { color: var(--muted); }
+  input[type="text"]:focus { outline: none; box-shadow: 0 0 0 2px var(--primary); }
+  .btn {
+    border: none; border-radius: var(--radius-btn); padding: 12px 22px; font-size: 15px; font-weight: 500;
+    cursor: pointer; background: var(--primary); color: var(--on-primary); flex: 0 0 auto;
+    font-family: var(--font-sans); transition: filter 0.15s ease;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn-ghost {
+    background: var(--surface-onyx); border: none; color: var(--ink);
+    font-weight: 500; padding: 7px 14px; font-size: 13px; border-radius: 6px; cursor: pointer;
+    font-family: var(--font-sans); transition: color 0.15s ease;
+  }
+  .btn-ghost:hover { color: var(--magenta); }
+
+  .empty { color: var(--muted); font-size: 14px; padding: 10px 2px; }
+
+  .stock-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .stock-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--surface-onyx); border-radius: var(--radius-chip); padding: 12px 16px;
+  }
+  .stock-name { font-size: 16px; font-weight: 500; color: var(--ink); font-family: var(--font-sans); }
+  .stock-code { font-size: 13px; color: var(--muted); margin-left: 8px; font-weight: 400; }
+
+  textarea#memo {
+    width: 100%; min-height: 140px; resize: vertical; background: var(--surface-onyx);
+    border: none; border-radius: var(--radius-control); padding: 12px 16px;
+    font-size: 14px; color: var(--ink); font-family: var(--font-sans); line-height: 1.6;
+    transition: box-shadow 0.15s ease;
+  }
+  textarea#memo::placeholder { color: var(--muted); }
+  textarea#memo:focus { outline: none; box-shadow: 0 0 0 2px var(--primary); }
+  .save-state { font-size: 13px; color: var(--muted); margin-top: 8px; height: 14px; }
+
+  .check-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .check-item { display: flex; align-items: center; gap: 10px; background: var(--surface-onyx); border-radius: var(--radius-chip); padding: 12px 16px; }
+  .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--green); flex: 0 0 auto; cursor: pointer; }
+  .check-text { flex: 1; font-size: 14px; color: var(--ink); font-family: var(--font-sans); }
+  .check-item.done .check-text { color: var(--muted); text-decoration: line-through; }
+
+  .macro-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .macro-item { background: var(--surface-onyx); border-radius: var(--radius-chip); padding: 16px; }
+  .macro-title { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .macro-desc { font-size: 14px; color: var(--ink); opacity: 0.85; line-height: 1.6; margin-bottom: 8px; font-family: var(--font-sans); }
+  .macro-source { font-size: 13px; font-family: var(--font-sans); }
+  .macro-source .label { color: var(--muted); margin-right: 4px; }
+  .macro-source a { color: var(--link); text-decoration: none; word-break: break-all; font-weight: 500; }
+  .macro-source a:hover { text-decoration: underline; }
+  .macro-note { font-size: 12px; color: var(--muted); margin-top: 6px; font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <div class="date" id="todayDate"></div>
+      <div class="greeting" id="greeting"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>오늘의 매크로 이슈 <span class="count" id="macroDateLabel"></span></h2>
+    <ul class="macro-list" id="macroList"></ul>
+    <div class="macro-note">공개 출처 기준으로 정리한 정적 스냅샷입니다. 최신 이슈로 갱신하려면 다시 요청해주세요.</div>
+  </div>
+
+  <div class="grid">
+    <!-- 좌측: 관심종목 -->
+    <div class="card">
+      <h2>관심종목 <span class="count" id="stockCount"></span></h2>
+      <div class="add-row">
+        <input type="text" id="stockNameInput" placeholder="종목명 (예: 삼성전자)">
+        <input type="text" id="stockCodeInput" placeholder="종목코드 (선택)" style="flex: 0 0 120px;">
+        <button class="btn" id="addStockBtn" type="button">추가</button>
+      </div>
+      <ul class="stock-list" id="stockList"></ul>
+    </div>
+
+    <!-- 우측: 메모 + 체크리스트 -->
+    <div>
+      <div class="card">
+        <h2>메모</h2>
+        <textarea id="memo" placeholder="오늘 챙길 것, 생각날 때 바로 적어두세요."></textarea>
+        <div class="save-state" id="memoSaveState"></div>
+      </div>
+
+      <div class="card">
+        <h2>오늘의 체크리스트 <span class="count" id="checkCount"></span></h2>
+        <div class="add-row">
+          <input type="text" id="checkInput" placeholder="할 일 추가">
+          <button class="btn" id="addCheckBtn" type="button">추가</button>
+        </div>
+        <ul class="check-list" id="checkList"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var LS_STOCKS = "dash-watchlist";
+  var LS_MEMO = "dash-memo";
+  var LS_CHECKS = "dash-checklist";
+
+  function load(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+  function save(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+  function uid() {
+    return "id-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  }
+
+  var stocks = load(LS_STOCKS, []);
+  var checks = load(LS_CHECKS, []);
+
+  // 오늘의 매크로 이슈: localStorage가 아닌 정적 스냅샷(공개 출처 조사 기준).
+  // 백엔드/실시간 API 연동이 없는 프로젝트 구조상 매일 자동 갱신은 되지 않으며,
+  // 최신 이슈로 바꾸려면 이 배열을 다시 채워야 한다.
+  var MACRO_ISSUES = [
+    {
+      date: "2026-08-12",
+      title: "미국 7월 CPI 발표",
+      desc: "미 노동통계국이 8월 12일 저녁(한국시간) 7월 CPI를 발표. 헤드라인 전월대비 +0.2%, 전년대비 3.4%로 전월(3.5%)보다 둔화 예상. 9월 연준 금리 결정의 핵심 변수로, 예상치 하회 시 위험자산·금 강세 및 달러 약세, 상회 시 국채금리·달러 강세와 증시 조정 가능성.",
+      sourceUrl: "https://www.newsquawk.com/headlines/preview-us-cpi-due-wednesday-12th-august-2026-at-1330bst0830edt",
+      sourceLabel: "Newsquawk - US CPI Preview"
+    },
+    {
+      date: "2026-08-12",
+      title: "한국은행 금통위 8월 27일 예정",
+      desc: "한국은행은 7월 16일 금융통화위원회에서 기준금리를 2.50%에서 2.75%로 상향 조정했고, 다음 회의는 8월 27일로 예정되어 있음.",
+      sourceUrl: "https://www.bok.or.kr/portal/singl/crncyPolicyDrcMtg/listYear.do?menuNo=200755&mtgSe=A",
+      sourceLabel: "한국은행 - 통화정책방향 결정회의 일정"
+    },
+    {
+      date: "2026-08-12",
+      title: "원/달러 환율, 원화 강세 기조",
+      desc: "8월 4일 기준 원/달러 환율 1,429.81원. 외국인 자금 유입과 무역여건 개선으로 원화 강세 흐름이 이어지고 있으며, 블룸버그 컨센서스는 2026년 12월 1,400원 수준을 전망.",
+      sourceUrl: "https://ko.tradingeconomics.com/south-korea/currency",
+      sourceLabel: "Trading Economics - 원/달러 환율"
+    }
+  ];
+
+  // ---------- 상단: 날짜 · 인사 ----------
+  function renderHeader() {
+    var now = new Date();
+    var days = ["일", "월", "화", "수", "목", "금", "토"];
+    var dateStr = now.getFullYear() + "년 " + (now.getMonth() + 1) + "월 " + now.getDate() + "일 (" + days[now.getDay()] + ")";
+    document.getElementById("todayDate").textContent = dateStr;
+
+    var hour = now.getHours();
+    var greeting = hour < 12 ? "좋은 아침입니다" : (hour < 18 ? "오늘도 화이팅입니다" : "오늘도 고생하셨습니다");
+    document.getElementById("greeting").textContent = greeting + " 👋";
+  }
+
+  // ---------- 오늘의 매크로 이슈 ----------
+  function renderMacro() {
+    var list = document.getElementById("macroList");
+    list.innerHTML = "";
+
+    if (!MACRO_ISSUES.length) {
+      var empty = document.createElement("li");
+      empty.className = "empty";
+      empty.textContent = "정리된 매크로 이슈가 없습니다.";
+      list.appendChild(empty);
+      document.getElementById("macroDateLabel").textContent = "";
+      return;
+    }
+
+    document.getElementById("macroDateLabel").textContent = MACRO_ISSUES[0].date + " 기준";
+
+    MACRO_ISSUES.forEach(function (issue) {
+      var li = document.createElement("li");
+      li.className = "macro-item";
+
+      var title = document.createElement("div");
+      title.className = "macro-title";
+      title.textContent = issue.title;
+
+      var desc = document.createElement("div");
+      desc.className = "macro-desc";
+      desc.textContent = issue.desc;
+
+      var source = document.createElement("div");
+      source.className = "macro-source";
+      var label = document.createElement("span");
+      label.className = "label";
+      label.textContent = "근거:";
+      var link = document.createElement("a");
+      link.href = issue.sourceUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = issue.sourceLabel || issue.sourceUrl;
+      source.appendChild(label);
+      source.appendChild(link);
+
+      li.appendChild(title);
+      li.appendChild(desc);
+      li.appendChild(source);
+      list.appendChild(li);
+    });
+  }
+
+  // ---------- 관심종목 ----------
+  function renderStocks() {
+    var list = document.getElementById("stockList");
+    list.innerHTML = "";
+    document.getElementById("stockCount").textContent = stocks.length ? stocks.length + "개" : "";
+
+    if (!stocks.length) {
+      var empty = document.createElement("li");
+      empty.className = "empty";
+      empty.textContent = "등록된 관심종목이 없습니다. 종목명을 입력해 추가해보세요.";
+      list.appendChild(empty);
+      return;
+    }
+
+    stocks.forEach(function (s) {
+      var li = document.createElement("li");
+      li.className = "stock-card";
+
+      var nameWrap = document.createElement("div");
+      var nameEl = document.createElement("span");
+      nameEl.className = "stock-name";
+      nameEl.textContent = s.name;
+      nameWrap.appendChild(nameEl);
+      if (s.code) {
+        var codeEl = document.createElement("span");
+        codeEl.className = "stock-code";
+        codeEl.textContent = s.code;
+        nameWrap.appendChild(codeEl);
+      }
+
+      var delBtn = document.createElement("button");
+      delBtn.className = "btn-ghost";
+      delBtn.type = "button";
+      delBtn.textContent = "삭제";
+      delBtn.addEventListener("click", function () {
+        stocks = stocks.filter(function (x) { return x.id !== s.id; });
+        save(LS_STOCKS, stocks);
+        renderStocks();
+      });
+
+      li.appendChild(nameWrap);
+      li.appendChild(delBtn);
+      list.appendChild(li);
+    });
+  }
+
+  function addStock() {
+    var nameInput = document.getElementById("stockNameInput");
+    var codeInput = document.getElementById("stockCodeInput");
+    var name = nameInput.value.trim();
+    var code = codeInput.value.trim();
+    if (!name) {
+      nameInput.focus();
+      return;
+    }
+    stocks.push({ id: uid(), name: name, code: code });
+    save(LS_STOCKS, stocks);
+    nameInput.value = "";
+    codeInput.value = "";
+    nameInput.focus();
+    renderStocks();
+  }
+
+  document.getElementById("addStockBtn").addEventListener("click", addStock);
+  ["stockNameInput", "stockCodeInput"].forEach(function (id) {
+    document.getElementById(id).addEventListener("keydown", function (e) {
+      if (e.key === "Enter") addStock();
+    });
+  });
+
+  // ---------- 메모 (자동 저장) ----------
+  var memoEl = document.getElementById("memo");
+  var memoSaveState = document.getElementById("memoSaveState");
+  memoEl.value = load(LS_MEMO, "");
+
+  var memoTimer = null;
+  memoEl.addEventListener("input", function () {
+    memoSaveState.textContent = "저장 중...";
+    clearTimeout(memoTimer);
+    memoTimer = setTimeout(function () {
+      localStorage.setItem(LS_MEMO, memoEl.value);
+      memoSaveState.textContent = "저장됨";
+      setTimeout(function () {
+        if (memoSaveState.textContent === "저장됨") memoSaveState.textContent = "";
+      }, 1500);
+    }, 400);
+  });
+
+  // ---------- 오늘의 체크리스트 ----------
+  function renderChecks() {
+    var list = document.getElementById("checkList");
+    list.innerHTML = "";
+    var doneCount = checks.filter(function (c) { return c.done; }).length;
+    document.getElementById("checkCount").textContent = checks.length ? (doneCount + "/" + checks.length) : "";
+
+    if (!checks.length) {
+      var empty = document.createElement("li");
+      empty.className = "empty";
+      empty.textContent = "오늘 할 일을 추가해보세요.";
+      list.appendChild(empty);
+      return;
+    }
+
+    checks.forEach(function (c) {
+      var li = document.createElement("li");
+      li.className = "check-item" + (c.done ? " done" : "");
+
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !!c.done;
+      checkbox.addEventListener("change", function () {
+        c.done = checkbox.checked;
+        save(LS_CHECKS, checks);
+        renderChecks();
+      });
+
+      var text = document.createElement("span");
+      text.className = "check-text";
+      text.textContent = c.text;
+
+      var delBtn = document.createElement("button");
+      delBtn.className = "btn-ghost";
+      delBtn.type = "button";
+      delBtn.textContent = "삭제";
+      delBtn.addEventListener("click", function () {
+        checks = checks.filter(function (x) { return x.id !== c.id; });
+        save(LS_CHECKS, checks);
+        renderChecks();
+      });
+
+      li.appendChild(checkbox);
+      li.appendChild(text);
+      li.appendChild(delBtn);
+      list.appendChild(li);
+    });
+  }
+
+  function addCheck() {
+    var input = document.getElementById("checkInput");
+    var textVal = input.value.trim();
+    if (!textVal) {
+      input.focus();
+      return;
+    }
+    checks.push({ id: uid(), text: textVal, done: false });
+    save(LS_CHECKS, checks);
+    input.value = "";
+    input.focus();
+    renderChecks();
+  }
+
+  document.getElementById("addCheckBtn").addEventListener("click", addCheck);
+  document.getElementById("checkInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") addCheck();
+  });
+
+  // ---------- 초기 렌더 ----------
+  renderHeader();
+  renderMacro();
+  renderStocks();
+  renderChecks();
+})();
+</script>
+</body>
+</html>
