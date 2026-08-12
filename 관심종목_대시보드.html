@@ -634,15 +634,16 @@
 
   // ---------- 시장 지표 (환율 · 지수) — 티커에 관심종목과 함께 표시 ----------
   // 환율은 Frankfurter(ECB 공식 환율, 키 불필요, CORS 허용)로 실시간 연동.
-  // 코스피/미국 지수는 대부분의 무료 시세 API가 브라우저 CORS를 막아둬서
-  // 키 발급이 필요한 Twelve Data 연동 예정 (TWELVE_DATA_KEY 채워지면 자동 활성화).
-  var TWELVE_DATA_KEY = "";
+  // 미국 지수는 Twelve Data 무료 플랜에서 지수(SPX/IXIC/DJI) 직접 조회가 막혀있어
+  // 대표 추종 ETF(SPY/QQQ/DIA) 시세로 대체한다 — 지수 포인트가 아닌 ETF 가격/등락률이다.
+  // 코스피는 Twelve Data 무료 플랜이 한국거래소(KRX) 데이터를 지원하지 않아 보류.
+  // 주의: 이 키는 클라이언트에 그대로 노출된다(무료 티어, 일일 호출 한도 있음).
+  var TWELVE_DATA_KEY = "f079c03fd8e7452e9ac6457293ca1a66";
   var MARKET_SYMBOLS = [
     { key: "usdkrw", label: "달러/원" },
-    { key: "kospi", label: "코스피", td: "KOSPI" },
-    { key: "sp500", label: "S&P500", td: "SPX" },
-    { key: "nasdaq", label: "나스닥", td: "IXIC" },
-    { key: "dow", label: "다우존스", td: "DJI" }
+    { key: "sp500", label: "S&P500(SPY)", td: "SPY" },
+    { key: "nasdaq", label: "나스닥(QQQ)", td: "QQQ" },
+    { key: "dow", label: "다우존스(DIA)", td: "DIA" }
   ];
   var marketData = {};
 
