@@ -323,6 +323,12 @@
     <div class="macro-note">공개 출처 기준으로 정리한 정적 스냅샷입니다. 최신 이슈로 갱신하려면 다시 요청해주세요.</div>
   </div>
 
+  <div class="card">
+    <h2>최근 공모주 일정</h2>
+    <ul class="macro-list" id="ipoList"></ul>
+    <div class="macro-note">공개 출처(ETF쇼핑 등) 기준으로 정리한 정적 스냅샷입니다. 청약 직전에는 반드시 출처 링크에서 최신 일정을 다시 확인하세요.</div>
+  </div>
+
   <div class="grid">
     <!-- 좌측: 관심종목 -->
     <div class="card">
@@ -352,6 +358,7 @@
           <div class="tag-filters" id="tagFilters"></div>
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn-ghost" id="refreshAllBtn" type="button">전체 시세 갱신</button>
           <button class="btn-ghost" id="copyStocksBtn" type="button">텍스트로 복사</button>
           <button class="btn-ghost" id="exportCsvBtn" type="button">CSV 내보내기</button>
           <button class="btn-ghost" id="importCsvBtn" type="button">CSV 가져오기</button>
@@ -639,6 +646,48 @@
   // 코스피는 Twelve Data 무료 플랜이 한국거래소(KRX) 데이터를 지원하지 않아 보류.
   // 주의: 이 키는 클라이언트에 그대로 노출된다(무료 티어, 일일 호출 한도 있음).
   var TWELVE_DATA_KEY = "f079c03fd8e7452e9ac6457293ca1a66";
+
+  // 한국 종목(코스피/코스닥) 현재가 자동조회 — data.go.kr 공공데이터포털 "한국거래소_주식시세정보"
+  // KRX 공식 일별 시세이며, 장중 실시간 체결가가 아니라 "가장 최근 영업일 종가" 기준이다.
+  // 주의: 이 키도 클라이언트에 그대로 노출된다. 발급받은 서비스키는 URL 인코딩된(Encoding) 형태 그대로 써야 한다.
+  var KRX_SERVICE_KEY = "%2FV4w2myflt2nF46%2BCpj2fml0oC%2FYF5krK4IlSLdTFwzhYejXda7NF%2BDMJX0WDBcLhZiHkWDm7kQf%2BQlM4HcZcA%3D%3D";
+
+  function krxDateToISO(basDt) {
+    return basDt.slice(0, 4) + "-" + basDt.slice(4, 6) + "-" + basDt.slice(6, 8);
+  }
+
+  function fetchKrxPrice(code) {
+    var url = "https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo"
+      + "?serviceKey=" + KRX_SERVICE_KEY
+      + "&resultType=json&numOfRows=1&pageNo=1&likeSrtnCd=" + encodeURIComponent(code);
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error("시세 조회 실패");
+      return res.json();
+    }).then(function (data) {
+      var body = data.response && data.response.body;
+      var items = body && body.items && body.items.item;
+      if (!items || !items.length) throw new Error("시세 데이터 없음");
+      var item = items[0];
+      return {
+        price: parseFloat(item.clpr),
+        basDt: item.basDt,
+        changePct: parseFloat(item.fltRt)
+      };
+    });
+  }
+
+  function refreshStockPrice(s) {
+    if (!s.code) return Promise.reject(new Error("종목코드가 없습니다."));
+    return fetchKrxPrice(s.code).then(function (q) {
+      var iso = krxDateToISO(q.basDt);
+      var newHistory = appendPricePoint(s.price_history, q.price, iso);
+      return updateStock(s.id, { current_price: q.price, price_history: newHistory });
+    }).then(function (updated) {
+      var idx = stocks.findIndex(function (x) { return x.id === s.id; });
+      if (idx !== -1) stocks[idx] = updated;
+      return updated;
+    });
+  }
   var MARKET_SYMBOLS = [
     { key: "usdkrw", label: "달러/원" },
     { key: "sp500", label: "S&P500(SPY)", td: "SPY" },
@@ -706,6 +755,39 @@
       desc: "8월 4일 기준 원/달러 환율 1,429.81원. 외국인 자금 유입과 무역여건 개선으로 원화 강세 흐름이 이어지고 있으며, 블룸버그 컨센서스는 2026년 12월 1,400원 수준을 전망.",
       sourceUrl: "https://ko.tradingeconomics.com/south-korea/currency",
       sourceLabel: "Trading Economics - 원/달러 환율"
+    }
+  ];
+
+  // 최근 공모주 일정: 매크로 이슈와 마찬가지로 실시간 API가 아닌 공개 출처 기준 정적 스냅샷.
+  // 청약 일정/공모가는 수시로 바뀌므로 반드시 출처 링크에서 재확인 후 청약할 것.
+  var IPO_SCHEDULE = [
+    {
+      name: "기도산업",
+      deadline: "2026-08-12",
+      detail: "청약 8/11~8/12 · 공모가 28,400원(확정) · 주관사 미래에셋증권 · 상장예정일 미확인",
+      sourceUrl: "https://etfshopping.com/ipo",
+      sourceLabel: "ETF쇼핑 - 공모주 청약 일정"
+    },
+    {
+      name: "니어스랩",
+      deadline: "2026-08-13",
+      detail: "청약 8/12~8/13 · 공모가 41,200원(확정) · 주관사 삼성증권 · 상장예정일 미확인",
+      sourceUrl: "https://etfshopping.com/ipo",
+      sourceLabel: "ETF쇼핑 - 공모주 청약 일정"
+    },
+    {
+      name: "해치텍",
+      deadline: "2026-08-13",
+      detail: "청약 8/12~8/13 · 공모가 23,000원(확정) · 주관사 DB증권 · 상장예정일 미확인",
+      sourceUrl: "https://etfshopping.com/ipo",
+      sourceLabel: "ETF쇼핑 - 공모주 청약 일정"
+    },
+    {
+      name: "스카이랩스",
+      deadline: "2026-08-27",
+      detail: "청약 8/26~8/27 · 희망밴드 13,000~16,000원(미확정) · 주관사 한국투자증권 · 상장예정일 미확인",
+      sourceUrl: "https://etfshopping.com/ipo",
+      sourceLabel: "ETF쇼핑 - 공모주 청약 일정"
     }
   ];
 
@@ -781,6 +863,61 @@
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.textContent = issue.sourceLabel || issue.sourceUrl;
+      source.appendChild(label);
+      source.appendChild(link);
+
+      li.appendChild(title);
+      li.appendChild(desc);
+      li.appendChild(source);
+      list.appendChild(li);
+    });
+  }
+
+  // ---------- 최근 공모주 일정 ----------
+  function renderIpoSchedule() {
+    var list = document.getElementById("ipoList");
+    list.innerHTML = "";
+
+    if (!IPO_SCHEDULE.length) {
+      var empty = document.createElement("li");
+      empty.className = "empty";
+      empty.textContent = "예정된 공모주 일정이 없습니다.";
+      list.appendChild(empty);
+      return;
+    }
+
+    IPO_SCHEDULE.forEach(function (ipo) {
+      var li = document.createElement("li");
+      li.className = "macro-item";
+
+      var title = document.createElement("div");
+      title.className = "macro-title";
+      var titleText = document.createElement("span");
+      titleText.textContent = ipo.name;
+      title.appendChild(titleText);
+
+      var badge = computeDday(ipo.deadline);
+      if (badge) {
+        var badgeEl = document.createElement("span");
+        badgeEl.className = "dday-badge" + (badge.cls ? " " + badge.cls : "");
+        badgeEl.textContent = badge.text;
+        title.appendChild(badgeEl);
+      }
+
+      var desc = document.createElement("div");
+      desc.className = "macro-desc";
+      desc.textContent = ipo.detail;
+
+      var source = document.createElement("div");
+      source.className = "macro-source";
+      var label = document.createElement("span");
+      label.className = "label";
+      label.textContent = "근거:";
+      var link = document.createElement("a");
+      link.href = ipo.sourceUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = ipo.sourceLabel || ipo.sourceUrl;
       source.appendChild(label);
       source.appendChild(link);
 
@@ -1034,13 +1171,13 @@
     return svg;
   }
 
-  function appendPricePoint(history, price) {
+  function appendPricePoint(history, price, dateStr) {
     var hist = (history || []).slice();
-    var today = todayISO();
-    if (hist.length && hist[hist.length - 1].d === today) {
-      hist[hist.length - 1] = { d: today, p: price };
+    var d = dateStr || todayISO();
+    if (hist.length && hist[hist.length - 1].d === d) {
+      hist[hist.length - 1] = { d: d, p: price };
     } else {
-      hist.push({ d: today, p: price });
+      hist.push({ d: d, p: price });
     }
     if (hist.length > 20) hist = hist.slice(hist.length - 20);
     return hist;
@@ -1168,6 +1305,26 @@
       priceBtn.className = "btn-ghost";
       priceBtn.type = "button";
       priceBtn.textContent = "가격수정";
+
+      if (s.code) {
+        var refreshBtn = document.createElement("button");
+        refreshBtn.className = "btn-ghost";
+        refreshBtn.type = "button";
+        refreshBtn.textContent = "시세 갱신";
+        refreshBtn.addEventListener("click", function () {
+          refreshBtn.disabled = true;
+          refreshStockPrice(s).then(function (updated) {
+            var lastPt = updated.price_history[updated.price_history.length - 1];
+            showToast(s.name + " " + fmtNum(updated.current_price) + "원 (" + (lastPt ? lastPt.d : "") + " 종가 기준)");
+            renderStocks();
+          }).catch(function () {
+            showToast("시세 조회에 실패했습니다.", "error");
+          }).finally(function () {
+            refreshBtn.disabled = false;
+          });
+        });
+        actions.appendChild(refreshBtn);
+      }
 
       var delBtn = document.createElement("button");
       delBtn.className = "btn-ghost";
@@ -1384,6 +1541,12 @@
       nameInput.focus();
       showToast(name + " 추가됨");
       renderStocks();
+
+      if (row.code && current == null) {
+        refreshStockPrice(row).then(function () {
+          renderStocks();
+        }).catch(function () { /* 자동 시세 조회 실패 시 조용히 무시 (수동 입력 가능) */ });
+      }
     }).catch(function () {
       stocksError = "종목 추가에 실패했습니다. 다시 시도해주세요.";
       showToast("종목 추가에 실패했습니다.", "error");
@@ -1433,6 +1596,30 @@
     } else {
       showToast("이 브라우저에서는 복사를 지원하지 않습니다.", "error");
     }
+  });
+
+  document.getElementById("refreshAllBtn").addEventListener("click", function () {
+    var targets = stocks.filter(function (s) { return s.code; });
+    if (!targets.length) {
+      showToast("종목코드가 있는 관심종목이 없습니다.", "error");
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    var successCount = 0;
+    var chain = Promise.resolve();
+    targets.forEach(function (s, i) {
+      chain = chain.then(function () {
+        return new Promise(function (resolve) { setTimeout(resolve, i === 0 ? 0 : 250); });
+      }).then(function () {
+        return refreshStockPrice(s).then(function () { successCount++; }).catch(function () { /* 개별 실패는 건너뜀 */ });
+      });
+    });
+    chain.then(function () {
+      renderStocks();
+      showToast(successCount + "/" + targets.length + "개 시세를 갱신했습니다.");
+      btn.disabled = false;
+    });
   });
 
   document.getElementById("exportCsvBtn").addEventListener("click", function () {
@@ -1684,6 +1871,7 @@
   // ---------- 초기 렌더 ----------
   renderHeader();
   renderMacro();
+  renderIpoSchedule();
   renderStocks();
   renderChecks();
 
