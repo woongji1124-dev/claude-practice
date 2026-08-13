@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스토리보드 QA 자동화</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --canvas:         #0a0d3a;
+    --surface-indigo: #1e2353;
+    --surface-onyx:   #23272a;
+    --primary:        #5865f2;
+    --on-primary:     #ffffff;
+    --green:          #35ed7e;
+    --magenta:        #ec48bd;
+    --amber:          #f2a65a;
+    --link:           #00b0f4;
+    --ink:            #ffffff;
+    --ink-dark:       #000000;
+    --muted:          rgba(255,255,255,0.6);
+    --radius-control: 16px;
+    --radius-btn:     12px;
+    --radius-card:    32px;
+    --radius-chip:    14px;
+    --radius-pill:    50px;
+    --shadow-soft:    0 3px 68px rgba(69,42,124,0.35);
+    --font-display:   'Space Grotesk', 'Hanken Grotesk', -apple-system, system-ui, sans-serif;
+    --font-sans:      'Inter', 'Plus Jakarta Sans', -apple-system, system-ui, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; color: var(--ink); font-family: var(--font-sans); }
+  body {
+    background:
+      radial-gradient(circle at 12% -10%, rgba(88,101,242,0.4), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(236,72,189,0.3), transparent 50%),
+      radial-gradient(circle at 50% 120%, rgba(88,101,242,0.25), transparent 55%),
+      var(--canvas);
+    background-attachment: fixed;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 56px; }
+
+  .hero { margin-bottom: 24px; }
+  .hero .eyebrow { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .hero h1 { font-family: var(--font-display); font-size: 28px; font-weight: 800; margin: 0 0 8px; }
+  .hero p { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 0; max-width: 640px; }
+
+  .card {
+    background: var(--surface-indigo); border-radius: var(--radius-card);
+    padding: 28px 32px; margin-bottom: 20px;
+  }
+  .card h2 {
+    font-family: var(--font-display); font-size: 18px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; margin: 0 0 16px; display: flex; align-items: center; gap: 10px;
+  }
+  .card h2 .step-num {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: var(--on-primary);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-family: var(--font-sans);
+  }
+
+  .btn {
+    border: none; border-radius: var(--radius-btn); padding: 12px 22px; font-size: 15px; font-weight: 600;
+    cursor: pointer; background: var(--primary); color: var(--on-primary);
+    font-family: var(--font-sans); transition: filter 0.15s ease;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-ghost {
+    background: var(--surface-onyx); border: none; color: var(--ink);
+    font-weight: 500; padding: 10px 18px; font-size: 13px; border-radius: var(--radius-btn); cursor: pointer;
+    font-family: var(--font-sans);
+  }
+  .btn-ghost:hover { filter: brightness(1.2); }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  .dropzone {
+    border: 2px dashed rgba(255,255,255,0.25); border-radius: var(--radius-control);
+    padding: 36px 20px; text-align: center; color: var(--muted); font-size: 14px;
+    transition: border-color 0.2s ease, background 0.2s ease; cursor: pointer;
+  }
+  .dropzone:hover, .dropzone.drag-over { border-color: var(--primary); background: rgba(88,101,242,0.08); }
+  .dropzone .dz-title { color: var(--ink); font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .file-hidden { display: none; }
+
+  .status-line { font-size: 13px; color: var(--muted); margin-top: 12px; min-height: 18px; }
+  .status-line.error { color: var(--magenta); }
+  .status-line.ok { color: var(--green); }
+
+  .slide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+  @media (max-width: 760px) { .slide-grid { grid-template-columns: 1fr; } }
+  .slide-preview { background: var(--surface-onyx); border-radius: var(--radius-control); padding: 16px; }
+  .slide-preview .slide-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+  .slide-preview img { width: 100%; border-radius: 10px; display: block; margin-bottom: 12px; background: #fff; }
+  .desc-list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .desc-list li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; gap: 8px; }
+  .desc-list li .num { color: var(--link); font-weight: 700; flex: 0 0 auto; }
+  .desc-list li .txt { color: var(--ink); opacity: 0.9; }
+
+  .checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .check-row {
+    display: flex; align-items: center; gap: 10px; background: var(--surface-onyx);
+    border-radius: var(--radius-chip); padding: 10px 14px; font-size: 13px; opacity: 0;
+    animation: row-in 0.25s ease forwards;
+  }
+  @keyframes row-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .check-row .icon { width: 20px; height: 20px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-size: 13px; border-radius: 50%; }
+  .check-row .icon.pending { border: 2px solid var(--muted); border-top-color: var(--primary); animation: spin 0.7s linear infinite; }
+  .check-row .icon.pass { background: var(--green); color: var(--ink-dark); }
+  .check-row .icon.fail { background: var(--magenta); color: var(--on-primary); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .check-row .slide-tag { color: var(--muted); font-size: 11px; flex: 0 0 auto; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: var(--radius-pill); }
+  .check-row .txt { flex: 1; }
+  .check-row .txt .issue-note { display: block; color: var(--magenta); font-size: 12px; margin-top: 2px; }
+
+  .summary-grid { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .summary-item { flex: 1 1 160px; background: var(--surface-onyx); border-radius: var(--radius-chip); padding: 18px 20px; }
+  .summary-value { font-size: 30px; font-weight: 800; font-family: var(--font-display); }
+  .summary-value.good { color: var(--green); }
+  .summary-value.bad { color: var(--magenta); }
+  .summary-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  .issue-group { margin-bottom: 16px; }
+  .issue-group h3 { font-size: 14px; font-family: var(--font-display); margin: 0 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .issue-item {
+    background: var(--surface-onyx); border-radius: var(--radius-chip); padding: 12px 16px; margin-bottom: 8px;
+    display: flex; gap: 12px; align-items: flex-start; font-size: 13px;
+  }
+  .issue-item .badge {
+    flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill);
+  }
+  .badge.high { background: var(--magenta); color: var(--on-primary); }
+  .badge.medium { background: var(--amber); color: var(--ink-dark); }
+  .badge.low { background: rgba(255,255,255,0.15); color: var(--ink); }
+  .issue-item .detail { flex: 1; }
+  .issue-item .detail .slide-name { color: var(--muted); font-size: 12px; display: block; margin-top: 2px; }
+
+  .empty { color: var(--muted); font-size: 14px; padding: 10px 2px; }
+  .hidden { display: none !important; }
+
+  .toast-container { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast {
+    background: var(--surface-onyx); color: var(--ink); border-radius: var(--radius-chip);
+    padding: 12px 18px; font-size: 14px; box-shadow: var(--shadow-soft);
+    border-left: 4px solid var(--primary); animation: toast-in 0.25s ease;
+  }
+  .toast.toast-error { border-left-color: var(--magenta); }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">AI 자동화 데모</div>
+    <h1>스토리보드 QA 자동화</h1>
+    <p>기획서(.pptx)를 업로드하면 슬라이드에 담긴 실제 텍스트를 추출해서, 사람이 엑셀로 하나씩 확인하던 QA 체크를 규칙 기반으로 자동 실행합니다. 이미지 OCR이 아니라 PPT 안에 실제로 들어있는 텍스트를 그대로 읽어서 분석합니다.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">1</span>스토리보드 업로드</h2>
+    <div class="dropzone" id="dropzone">
+      <div class="dz-title">여기에 .pptx 파일을 끌어다 놓거나 클릭해서 선택하세요</div>
+      <div>PowerPoint로 만든 스토리보드 원본 파일이면 됩니다 (이미지 캡처본이 아닌 .pptx)</div>
+      <input type="file" id="fileInput" class="file-hidden" accept=".pptx">
+    </div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn-ghost" id="loadSampleBtn" type="button">샘플 스토리보드로 체험하기</button>
+    </div>
+    <div class="status-line" id="uploadStatus"></div>
+  </div>
+
+  <div class="card hidden" id="previewCard">
+    <h2><span class="step-num">2</span>추출된 화면 · 설명 확인</h2>
+    <div class="slide-grid" id="slideGrid"></div>
+  </div>
+
+  <div class="card hidden" id="qaCard">
+    <h2><span class="step-num">3</span>AI QA 실행</h2>
+    <div class="btn-row">
+      <button class="btn" id="startQaBtn" type="button">AI QA 시작</button>
+      <span class="status-line" id="qaStatus" style="margin-top:0;"></span>
+    </div>
+    <ul class="checklist" id="checklist" style="margin-top:16px;"></ul>
+  </div>
+
+  <div class="card hidden" id="reportCard">
+    <h2><span class="step-num">4</span>QA 결과 리포트</h2>
+    <div class="summary-grid" id="summaryGrid"></div>
+    <div id="issueGroups"></div>
+    <div class="btn-row">
+      <button class="btn-ghost" id="downloadCsvBtn" type="button">QA 결과서 다운로드 (CSV)</button>
+    </div>
+
+    <h2 style="margin-top:28px;"><span class="step-num">5</span>QA 체크리스트 (엑셀)</h2>
+    <p style="color:var(--muted); font-size:13px; margin:0 0 14px;">
+      스토리보드의 번호 항목과 하위 설명을 한 줄씩 풀어서, 배포 후 영향 범위를 O/X로 체크할 수 있는 회귀 테스트용 체크리스트로 만듭니다.
+      (위 이슈 리포트와는 별개로, 스토리보드 내용 자체를 체크리스트로 변환한 것입니다.)
+    </p>
+    <div class="btn-row">
+      <button class="btn-ghost" id="downloadChecklistBtn" type="button">체크리스트 다운로드 (.xlsx)</button>
+      <span class="status-line" id="checklistStatus" style="margin-top:0;"></span>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // =====================================================================
+  // 유틸
+  // =====================================================================
+  function showToast(msg, type) {
+    var container = document.getElementById("toastContainer");
+    var el = document.createElement("div");
+    el.className = "toast" + (type === "error" ? " toast-error" : "");
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = "opacity 0.25s ease";
+      el.style.opacity = "0";
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 250);
+    }, 2400);
+  }
+  function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  function setStatus(el, msg, cls) {
+    el.textContent = msg;
+    el.className = "status-line" + (cls ? " " + cls : "");
+  }
+  function csvEscape(v) {
+    v = v == null ? "" : String(v);
+    if (/[",\n]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  }
+
+  // =====================================================================
+  // ZIP 리더 (라이브러리 없이 순수 JS) — .pptx는 ZIP(OOXML) 컨테이너다.
+  // 표준 ZIP(중앙 디렉터리 + deflate)만 지원한다. Zip64 등 확장 포맷은 다루지 않는다.
+  // =====================================================================
+  function readUint32LE(view, offset) { return view.getUint32(offset, true); }
+  function readUint16LE(view, offset) { return view.getUint16(offset, true); }
+
+  function findEOCD(bytes) {
+    for (var i = bytes.length - 22; i >= 0; i--) {
+      if (bytes[i] === 0x50 && bytes[i + 1] === 0x4b && bytes[i + 2] === 0x05 && bytes[i + 3] === 0x06) {
+        return i;
+      }
+    }
+    throw new Error("ZIP 구조를 찾을 수 없습니다 (EOCD 없음). 올바른 .pptx 파일인지 확인해주세요.");
+  }
+
+  function parseCentralDirectory(bytes, view) {
+    var eocdOffset = findEOCD(bytes);
+    var cdCount = readUint16LE(view, eocdOffset + 10);
+    var cdOffset = readUint32LE(view, eocdOffset + 16);
+    var entries = [];
+    var offset = cdOffset;
+    for (var i = 0; i < cdCount; i++) {
+      var sig = readUint32LE(view, offset);
+      if (sig !== 0x02014b50) throw new Error("ZIP 중앙 디렉터리 형식이 올바르지 않습니다.");
+      var method = readUint16LE(view, offset + 10);
+      var compSize = readUint32LE(view, offset + 20);
+      var nameLen = readUint16LE(view, offset + 28);
+      var extraLen = readUint16LE(view, offset + 30);
+      var commentLen = readUint16LE(view, offset + 32);
+      var localHeaderOffset = readUint32LE(view, offset + 42);
+      var nameBytes = bytes.subarray(offset + 46, offset + 46 + nameLen);
+      var name = new TextDecoder("utf-8").decode(nameBytes);
+      entries.push({ name: name, method: method, compSize: compSize, localHeaderOffset: localHeaderOffset });
+      offset += 46 + nameLen + extraLen + commentLen;
+    }
+    return entries;
+  }
+
+  function extractZipEntry(bytes, view, entry) {
+    var lhOffset = entry.localHeaderOffset;
+    var sig = readUint32LE(view, lhOffset);
+    if (sig !== 0x04034b50) throw new Error("ZIP 로컬 파일 헤더가 올바르지 않습니다: " + entry.name);
+    var nameLen = readUint16LE(view, lhOffset + 26);
+    var extraLen = readUint16LE(view, lhOffset + 28);
+    var dataOffset = lhOffset + 30 + nameLen + extraLen;
+    var compData = bytes.subarray(dataOffset, dataOffset + entry.compSize);
+    if (entry.method === 0) {
+      return Promise.resolve(compData);
+    }
+    if (entry.method === 8) {
+      if (!window.DecompressionStream) {
+        return Promise.reject(new Error("이 브라우저는 압축 해제(DecompressionStream)를 지원하지 않습니다. 최신 Chrome/Edge를 사용해주세요."));
+      }
+      var ds = new DecompressionStream("deflate-raw");
+      var stream = new Blob([compData]).stream().pipeThrough(ds);
+      return new Response(stream).arrayBuffer().then(function (buf) { return new Uint8Array(buf); });
+    }
+    return Promise.reject(new Error("지원하지 않는 압축 방식입니다: " + entry.method));
+  }
+
+  function unzip(arrayBuffer) {
+    var bytes = new Uint8Array(arrayBuffer);
+    var view = new DataView(arrayBuffer);
+    var entries = parseCentralDirectory(bytes, view);
+    var fileEntries = entries.filter(function (e) { return !e.name.endsWith("/"); });
+    var result = {};
+    return fileEntries.reduce(function (chain, entry) {
+      return chain.then(function () {
+        return extractZipEntry(bytes, view, entry).then(function (data) {
+          result[entry.name] = data;
+        });
+      });
+    }, Promise.resolve()).then(function () { return result; });
+  }
+
+  // =====================================================================
+  // ZIP 쓰기 (라이브러리 없이 순수 JS) — .xlsx 체크리스트 생성을 위해
+  // 압축 없이 저장(Stored, method=0)만 사용한다. 크기는 조금 크지만 구현이 단순하고
+  // 어떤 zip 리더/엑셀에서도 100% 유효하게 열린다.
+  // =====================================================================
+  var CRC32_TABLE = (function () {
+    var table = new Uint32Array(256);
+    for (var i = 0; i < 256; i++) {
+      var c = i;
+      for (var j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      table[i] = c;
+    }
+    return table;
+  })();
+
+  function crc32(bytes) {
+    var crc = 0xFFFFFFFF;
+    for (var i = 0; i < bytes.length; i++) {
+      crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function buildZip(files) {
+    // files: [{ name: string, data: Uint8Array }]
+    var encoder = new TextEncoder();
+    var localChunks = [];
+    var centralChunks = [];
+    var offset = 0;
+
+    files.forEach(function (f) {
+      var nameBytes = encoder.encode(f.name);
+      var crc = crc32(f.data);
+      var size = f.data.length;
+
+      var lh = new Uint8Array(30 + nameBytes.length);
+      var lv = new DataView(lh.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, 0, true);
+      lv.setUint16(12, 0, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, size, true);
+      lv.setUint32(22, size, true);
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);
+      lh.set(nameBytes, 30);
+
+      localChunks.push(lh, f.data);
+
+      var ch = new Uint8Array(46 + nameBytes.length);
+      var cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, 0, true);
+      cv.setUint16(14, 0, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      ch.set(nameBytes, 46);
+      centralChunks.push(ch);
+
+      offset += lh.length + f.data.length;
+    });
+
+    var centralStart = offset;
+    var centralSize = centralChunks.reduce(function (sum, c) { return sum + c.length; }, 0);
+
+    var eocd = new Uint8Array(22);
+    var ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, centralStart, true);
+    ev.setUint16(20, 0, true);
+
+    return new Blob(localChunks.concat(centralChunks, [eocd]), { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  }
+
+  function escapeXml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  }
+
+  function colLetter(n) {
+    // 1-based column index -> "A", "B", ... "Z", "AA" ...
+    var s = "";
+    while (n > 0) {
+      var rem = (n - 1) % 26;
+      s = String.fromCharCode(65 + rem) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s;
+  }
+
+  // 스토리보드의 번호 항목 + 하위 설명을 "체크 항목" 한 줄씩으로 펼친다.
+  // (이 함수는 QA 이슈 판정과는 별개로, 사람이 수동으로 하던 "엑셀에 체크 항목 옮겨적기"를 대신한다.)
+  function buildChecklistRows(slides) {
+    var rows = [];
+    slides.filter(function (s) { return s.isScreenSlide; }).forEach(function (slide) {
+      slide.items.forEach(function (it) {
+        var checks = (it.subLines && it.subLines.length) ? it.subLines : [it.text];
+        checks.forEach(function (chk) {
+          rows.push({ slideLabel: slide.title, num: it.num, check: chk });
+        });
+      });
+    });
+    return rows;
+  }
+
+  function buildChecklistXlsx(slides) {
+    var rows = buildChecklistRows(slides);
+    var header = ["화면(슬라이드)", "번호", "체크 항목", "결과(O/X)", "비고"];
+
+    var sheetRows = [];
+    sheetRows.push(
+      "<row r=\"1\">" +
+      header.map(function (h, i) {
+        return "<c r=\"" + colLetter(i + 1) + "1\" s=\"1\" t=\"inlineStr\"><is><t>" + escapeXml(h) + "</t></is></c>";
+      }).join("") +
+      "</row>"
+    );
+    rows.forEach(function (r, idx) {
+      var rowNum = idx + 2;
+      var cells = [
+        "<c r=\"A" + rowNum + "\" t=\"inlineStr\"><is><t>" + escapeXml(r.slideLabel) + "</t></is></c>",
+        "<c r=\"B" + rowNum + "\"><v>" + r.num + "</v></c>",
+        "<c r=\"C" + rowNum + "\" t=\"inlineStr\"><is><t>" + escapeXml(r.check) + "</t></is></c>",
+        "<c r=\"D" + rowNum + "\" t=\"inlineStr\"><is><t></t></is></c>",
+        "<c r=\"E" + rowNum + "\" t=\"inlineStr\"><is><t></t></is></c>"
+      ];
+      sheetRows.push("<row r=\"" + rowNum + "\">" + cells.join("") + "</row>");
+    });
+
+    var sheetXml =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+      "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" +
+      "<cols><col min=\"1\" max=\"1\" width=\"22\" customWidth=\"1\"/><col min=\"2\" max=\"2\" width=\"8\" customWidth=\"1\"/>" +
+      "<col min=\"3\" max=\"3\" width=\"65\" customWidth=\"1\"/><col min=\"4\" max=\"4\" width=\"12\" customWidth=\"1\"/>" +
+      "<col min=\"5\" max=\"5\" width=\"30\" customWidth=\"1\"/></cols>" +
+      "<sheetData>" + sheetRows.join("") + "</sheetData>" +
+      "</worksheet>";
+
+    var contentTypes =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+      "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+      "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>" +
+      "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+      "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+      "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+      "<Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/>" +
+      "</Types>";
+
+    var rootRels =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+      "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+      "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+      "</Relationships>";
+
+    var workbookXml =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+      "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+      "<sheets><sheet name=\"QA 체크리스트\" sheetId=\"1\" r:id=\"rId1\"/></sheets>" +
+      "</workbook>";
+
+    var workbookRels =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+      "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+      "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+      "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>" +
+      "</Relationships>";
+
+    var stylesXml =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+      "<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" +
+      "<fonts count=\"2\"><font><sz val=\"10\"/><name val=\"맑은 고딕\"/></font>" +
+      "<font><b/><sz val=\"10\"/><color rgb=\"FFFFFFFF\"/><name val=\"맑은 고딕\"/></font></fonts>" +
+      "<fills count=\"3\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill>" +
+      "<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF5865F2\"/><bgColor indexed=\"64\"/></patternFill></fill></fills>" +
+      "<borders count=\"1\"><border><left/><right/><top/><bottom/><diagonal/></border></borders>" +
+      "<cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs>" +
+      "<cellXfs count=\"2\">" +
+      "<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"/>" +
+      "<xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\"/>" +
+      "</cellXfs>" +
+      "<cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles>" +
+      "</styleSheet>";
+
+    var encoder = new TextEncoder();
+    var files = [
+      { name: "[Content_Types].xml", data: encoder.encode(contentTypes) },
+      { name: "_rels/.rels", data: encoder.encode(rootRels) },
+      { name: "xl/workbook.xml", data: encoder.encode(workbookXml) },
+      { name: "xl/_rels/workbook.xml.rels", data: encoder.encode(workbookRels) },
+      { name: "xl/styles.xml", data: encoder.encode(stylesXml) },
+      { name: "xl/worksheets/sheet1.xml", data: encoder.encode(sheetXml) }
+    ];
+
+    return { blob: buildZip(files), rowCount: rows.length };
+  }
+
+  // =====================================================================
+  // PPTX 파싱 — 슬라이드별 제목 / 번호매김 설명 목록 / 임베드 이미지 추출
+  // =====================================================================
+  var NS_P = "http://schemas.openxmlformats.org/presentationml/2006/main";
+  var NS_A = "http://schemas.openxmlformats.org/drawingml/2006/main";
+  var NS_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+
+  function parseXml(text) {
+    return new DOMParser().parseFromString(text, "application/xml");
+  }
+
+  function shapeText(spEl) {
+    var paragraphs = Array.prototype.slice.call(spEl.getElementsByTagNameNS(NS_A, "p"));
+    return paragraphs.map(function (p) {
+      var runs = Array.prototype.slice.call(p.getElementsByTagNameNS(NS_A, "t"));
+      return runs.map(function (r) { return r.textContent; }).join("");
+    });
+  }
+
+  // 화면 설계 슬라이드로 인식하는 마커. 실제로 확인된 템플릿마다 표현이 달라서
+  // ("화면 설명" / "Description") 몇 가지 변형을 허용한다. 새로운 표현이 발견되면 여기에 추가한다.
+  var DESC_MARKER_RE = /^(화면\s*설명|description)[:：]?$/i;
+  var TITLE_LABEL_RE = /^화면명\s*[:：]\s*(.+)$/;
+
+  function extractSlideInfo(xmlText, slideNumber) {
+    var doc = parseXml(xmlText);
+    var shapes = Array.prototype.slice.call(doc.getElementsByTagNameNS(NS_P, "sp"));
+    var title = "";
+    var hasDescMarker = false;
+    var items = [];
+
+    // 번호 항목과 그 아래 "- 상세 설명" 줄들은 같은 도형(텍스트 상자) 안에 순서대로 들어있으므로,
+    // 도형 단위로 훑으면서 직전에 나온 번호 항목에 하위 설명을 이어붙인다.
+    shapes.forEach(function (sp) {
+      var lines = shapeText(sp).map(function (l) { return l.trim(); }).filter(function (l) { return l !== ""; });
+      var currentItem = null;
+      lines.forEach(function (line) {
+        var titleMatch = line.match(TITLE_LABEL_RE);
+        if (titleMatch) title = titleMatch[1].trim();
+        if (DESC_MARKER_RE.test(line)) {
+          hasDescMarker = true;
+          currentItem = null;
+          return;
+        }
+        var m = line.match(/^(\d+)[.\)]\s*(.+)$/);
+        if (m) {
+          currentItem = { num: parseInt(m[1], 10), text: m[2].trim(), subLines: [] };
+          items.push(currentItem);
+        } else if (currentItem) {
+          var cleaned = line.replace(/^[-‐–—]\s*/, "").trim();
+          if (cleaned) currentItem.subLines.push(cleaned);
+        }
+      });
+    });
+
+    // "화면 설명" 마커가 없는 슬라이드(표지/용어집/WBS/QA시트 등)는 화면 설계 슬라이드가
+    // 아니라고 보고 QA 대상에서 제외한다. 그런 슬라이드에 있는 임의의 숫자(버전, 목차 번호 등)를
+    // 설명 항목 번호로 잘못 인식해서 결과가 폭증하는 걸 막기 위한 안전장치다.
+    if (!hasDescMarker) {
+      return { title: title || ("슬라이드 " + slideNumber), items: [], isScreenSlide: false, hasExplicitTitle: !!title };
+    }
+
+    return {
+      title: title || ("슬라이드 " + slideNumber),
+      items: items,
+      isScreenSlide: true,
+      hasExplicitTitle: !!title
+    };
+  }
+
+  function findImageRelForSlide(relsXmlText) {
+    if (!relsXmlText) return null;
+    var doc = parseXml(relsXmlText);
+    var rels = Array.prototype.slice.call(doc.getElementsByTagName("Relationship"));
+    for (var i = 0; i < rels.length; i++) {
+      var type = rels[i].getAttribute("Type") || "";
+      if (type.indexOf("/image") !== -1) {
+        return rels[i].getAttribute("Target");
+      }
+    }
+    return null;
+  }
+
+  function resolvePath(basePath, relTarget) {
+    // basePath: "ppt/slides", relTarget: "../media/image1.png"
+    var baseParts = basePath.split("/");
+    var relParts = relTarget.split("/");
+    relParts.forEach(function (part) {
+      if (part === "..") baseParts.pop();
+      else if (part !== ".") baseParts.push(part);
+    });
+    return baseParts.join("/");
+  }
+
+  function guessMime(path) {
+    if (/\.png$/i.test(path)) return "image/png";
+    if (/\.jpe?g$/i.test(path)) return "image/jpeg";
+    if (/\.gif$/i.test(path)) return "image/gif";
+    if (/\.bmp$/i.test(path)) return "image/bmp";
+    return "application/octet-stream";
+  }
+
+  function parsePptx(arrayBuffer) {
+    return unzip(arrayBuffer).then(function (entries) {
+      var slidePaths = Object.keys(entries)
+        .filter(function (p) { return /^ppt\/slides\/slide\d+\.xml$/.test(p); })
+        .sort(function (a, b) {
+          var na = parseInt(a.match(/slide(\d+)\.xml/)[1], 10);
+          var nb = parseInt(b.match(/slide(\d+)\.xml/)[1], 10);
+          return na - nb;
+        });
+
+      if (!slidePaths.length) throw new Error("이 파일에서 슬라이드를 찾지 못했습니다. .pptx 파일이 맞는지 확인해주세요.");
+
+      var decoder = new TextDecoder("utf-8");
+      var slides = slidePaths.map(function (path) {
+        var slideNumber = parseInt(path.match(/slide(\d+)\.xml/)[1], 10);
+        var xmlText = decoder.decode(entries[path]);
+        var info = extractSlideInfo(xmlText, slideNumber);
+
+        var relsPath = path.replace("ppt/slides/", "ppt/slides/_rels/") + ".rels";
+        var relsText = entries[relsPath] ? decoder.decode(entries[relsPath]) : null;
+        var imgTarget = findImageRelForSlide(relsText);
+        var imageUrl = null;
+        if (imgTarget) {
+          var imgPath = resolvePath("ppt/slides", imgTarget);
+          if (entries[imgPath]) {
+            var blob = new Blob([entries[imgPath]], { type: guessMime(imgPath) });
+            imageUrl = URL.createObjectURL(blob);
+          }
+        }
+
+        return {
+          slideNumber: slideNumber,
+          title: info.title,
+          items: info.items,
+          imageUrl: imageUrl,
+          isScreenSlide: info.isScreenSlide,
+          hasExplicitTitle: info.hasExplicitTitle
+        };
+      });
+
+      return slides;
+    });
+  }
+
+  // =====================================================================
+  // 규칙 기반 QA 엔진 — 추출된 실제 텍스트에 대해 실행. 결과는 입력에 따라 달라진다.
+  // =====================================================================
+  function normalizeScreenName(s) {
+    return s.replace(/\s+/g, "");
+  }
+
+  function runQaChecks(slides) {
+    var allItems = [];
+    slides.forEach(function (slide, si) {
+      slide.items.forEach(function (it) {
+        allItems.push({ num: it.num, text: it.text, slideIndex: si, slideTitle: slide.title });
+      });
+    });
+
+    var findings = [];
+
+    // 1) 번호 연속성 (슬라이드별)
+    slides.forEach(function (slide, si) {
+      var counts = {};
+      slide.items.forEach(function (it) { counts[it.num] = (counts[it.num] || 0) + 1; });
+      Object.keys(counts).forEach(function (nStr) {
+        if (counts[nStr] > 1) {
+          findings.push({
+            type: "번호 중복", severity: "high", slideIndex: si, slideTitle: slide.title, itemNum: parseInt(nStr, 10),
+            detail: "번호 " + nStr + "이(가) " + counts[nStr] + "번 사용됨"
+          });
+        }
+      });
+      var nums = slide.items.map(function (it) { return it.num; });
+      if (nums.length) {
+        var maxNum = Math.max.apply(null, nums);
+        // 번호 체계가 이상하게 크면(잘못 인식된 숫자일 가능성) 폭주를 막기 위해 건너뛴다.
+        if (maxNum > 40 || maxNum > nums.length * 4) {
+          findings.push({
+            type: "번호 체계 확인 필요", severity: "medium", slideIndex: si, slideTitle: slide.title, itemNum: null,
+            detail: "최대 번호(" + maxNum + ")가 항목 수(" + nums.length + "개)에 비해 지나치게 커서 번호 누락 검사를 건너뜀"
+          });
+        } else {
+          for (var n = 1; n <= maxNum; n++) {
+            if (nums.indexOf(n) === -1) {
+              findings.push({
+                type: "번호 누락", severity: "high", slideIndex: si, slideTitle: slide.title, itemNum: null,
+                detail: "번호 " + n + "이(가) 목록에서 빠져 있음"
+              });
+            }
+          }
+        }
+      }
+    });
+
+    // 2) 중복 설명 문장 (전체 슬라이드 통틀어)
+    var textMap = {};
+    allItems.forEach(function (it) {
+      var key = it.text;
+      (textMap[key] = textMap[key] || []).push(it);
+    });
+    Object.keys(textMap).forEach(function (key) {
+      var group = textMap[key];
+      if (group.length > 1) {
+        group.forEach(function (it) {
+          findings.push({
+            type: "중복 설명", severity: "medium", slideIndex: it.slideIndex, slideTitle: it.slideTitle, itemNum: it.num,
+            detail: "\"" + key + "\" 문장이 다른 항목과 동일함 (" + group.length + "건 중복)"
+          });
+        });
+      }
+    });
+
+    // 3) 조건 불명확 ("조건"이라는 단어는 있는데 구체적 기준이 없음)
+    allItems.forEach(function (it) {
+      if (it.text.indexOf("조건") !== -1 && !/[()（）]|경우|때|이상|이하|초과|미만/.test(it.text)) {
+        findings.push({
+          type: "조건 불명확", severity: "medium", slideIndex: it.slideIndex, slideTitle: it.slideTitle, itemNum: it.num,
+          detail: "\"조건\"이 언급되었지만 구체적인 기준이 적혀 있지 않음"
+        });
+      }
+    });
+
+    // 4) 설명 부족 (지나치게 짧은 설명)
+    allItems.forEach(function (it) {
+      if (it.text.length < 5) {
+        findings.push({
+          type: "설명 부족", severity: "low", slideIndex: it.slideIndex, slideTitle: it.slideTitle, itemNum: it.num,
+          detail: "설명이 " + it.text.length + "자로 너무 짧아 의도를 알기 어려움"
+        });
+      }
+    });
+
+    // 5) 화면 참조 무결성 ("OO페이지" 언급이 실제 존재하는 화면명인지)
+    // 화면명이 명시된 슬라이드가 하나도 없으면(=원본에 화면명 라벨 자체가 없음) 비교 기준이
+    // 없는 상태이므로 이 규칙은 건너뛴다. 그렇지 않으면 전부 오탐으로 뜬다.
+    var hasNamedTitles = slides.some(function (s) { return s.hasExplicitTitle; });
+    if (hasNamedTitles) {
+      var knownScreens = [];
+      slides.forEach(function (slide) {
+        if (!slide.hasExplicitTitle) return;
+        var matches = slide.title.match(/[가-힣A-Za-z0-9]+\s*페이지/g) || [];
+        matches.forEach(function (m) { knownScreens.push(normalizeScreenName(m)); });
+      });
+      allItems.forEach(function (it) {
+        var refs = it.text.match(/[가-힣A-Za-z0-9]+\s*페이지/g) || [];
+        refs.forEach(function (ref) {
+          var norm = normalizeScreenName(ref);
+          if (knownScreens.indexOf(norm) === -1) {
+            findings.push({
+              type: "화면 참조 오류", severity: "high", slideIndex: it.slideIndex, slideTitle: it.slideTitle, itemNum: it.num,
+              detail: "\"" + ref + "\"라는 화면을 참조하지만, 스토리보드에 해당 화면이 없음"
+            });
+          }
+        });
+      });
+    }
+
+    // 6) 표기 일관성 (마침표 사용 여부가 문서 내에서 통일되지 않음)
+    var withPeriod = allItems.filter(function (it) { return /[.]\s*$/.test(it.text); });
+    var withoutPeriod = allItems.filter(function (it) { return !/[.]\s*$/.test(it.text); });
+    if (withPeriod.length && withoutPeriod.length) {
+      var minority = withPeriod.length <= withoutPeriod.length ? withPeriod : withoutPeriod;
+      minority.forEach(function (it) {
+        findings.push({
+          type: "표기 일관성", severity: "low", slideIndex: it.slideIndex, slideTitle: it.slideTitle, itemNum: it.num,
+          detail: "마침표 사용 방식이 문서 내 다른 항목들과 다름"
+        });
+      });
+    }
+
+    return { allItems: allItems, findings: findings };
+  }
+
+  // =====================================================================
+  // 화면 흐름 제어
+  // =====================================================================
+  var currentSlides = null;
+  var currentQaResult = null;
+
+  var fileInput = document.getElementById("fileInput");
+  var dropzone = document.getElementById("dropzone");
+  var uploadStatus = document.getElementById("uploadStatus");
+  var previewCard = document.getElementById("previewCard");
+  var slideGrid = document.getElementById("slideGrid");
+  var qaCard = document.getElementById("qaCard");
+  var qaStatus = document.getElementById("qaStatus");
+  var startQaBtn = document.getElementById("startQaBtn");
+  var checklistEl = document.getElementById("checklist");
+  var reportCard = document.getElementById("reportCard");
+
+  dropzone.addEventListener("click", function () { fileInput.click(); });
+  dropzone.addEventListener("dragover", function (e) { e.preventDefault(); dropzone.classList.add("drag-over"); });
+  dropzone.addEventListener("dragleave", function () { dropzone.classList.remove("drag-over"); });
+  dropzone.addEventListener("drop", function (e) {
+    e.preventDefault();
+    dropzone.classList.remove("drag-over");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener("change", function () {
+    if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  document.getElementById("loadSampleBtn").addEventListener("click", function () {
+    setStatus(uploadStatus, "샘플 스토리보드를 불러오는 중...");
+    fetch("스토리보드_샘플.pptx")
+      .then(function (res) {
+        if (!res.ok) throw new Error("샘플 파일을 찾을 수 없습니다. 이 HTML과 같은 폴더에 '스토리보드_샘플.pptx'가 있는지 확인해주세요.");
+        return res.arrayBuffer();
+      })
+      .then(function (buf) { processArrayBuffer(buf, "스토리보드_샘플.pptx"); })
+      .catch(function (err) {
+        setStatus(uploadStatus, err.message, "error");
+        showToast(err.message, "error");
+      });
+  });
+
+  function handleFile(file) {
+    if (!/\.pptx$/i.test(file.name)) {
+      setStatus(uploadStatus, "'.pptx' 파일만 지원합니다.", "error");
+      return;
+    }
+    setStatus(uploadStatus, file.name + " 분석 중...");
+    file.arrayBuffer().then(function (buf) { processArrayBuffer(buf, file.name); }).catch(function (err) {
+      setStatus(uploadStatus, "파일을 읽는 중 오류가 발생했습니다: " + err.message, "error");
+    });
+  }
+
+  function processArrayBuffer(buf, name) {
+    parsePptx(buf).then(function (slides) {
+      currentSlides = slides;
+      currentQaResult = null;
+      var screenSlides = slides.filter(function (s) { return s.isScreenSlide; });
+      var totalItems = screenSlides.reduce(function (sum, s) { return sum + s.items.length; }, 0);
+      var skippedCount = slides.length - screenSlides.length;
+      var msg = name + " 분석 완료 — 전체 " + slides.length + "장 중 화면 설계 슬라이드 " + screenSlides.length + "장, 설명 항목 " + totalItems + "개 추출됨";
+      if (skippedCount) msg += " (표지·용어집 등 " + skippedCount + "장은 QA 대상에서 제외)";
+      setStatus(uploadStatus, msg, "ok");
+      renderSlidePreview(slides);
+      previewCard.classList.remove("hidden");
+      qaCard.classList.remove("hidden");
+      reportCard.classList.add("hidden");
+      checklistEl.innerHTML = "";
+      qaStatus.textContent = "";
+      startQaBtn.disabled = false;
+    }).catch(function (err) {
+      setStatus(uploadStatus, err.message, "error");
+      showToast(err.message, "error");
+    });
+  }
+
+  function renderSlidePreview(slides) {
+    slideGrid.innerHTML = "";
+    var screenSlides = slides.filter(function (s) { return s.isScreenSlide; });
+    var skipped = slides.filter(function (s) { return !s.isScreenSlide; });
+
+    if (skipped.length) {
+      var note = document.createElement("div");
+      note.className = "status-line";
+      note.style.gridColumn = "1 / -1";
+      note.style.marginBottom = "4px";
+      note.textContent = "\"화면 설명\" 표시가 없어 제외된 슬라이드 " + skipped.length + "장: " +
+        skipped.map(function (s) { return "슬라이드 " + s.slideNumber; }).join(", ");
+      slideGrid.appendChild(note);
+    }
+
+    screenSlides.forEach(function (slide) {
+      var box = document.createElement("div");
+      box.className = "slide-preview";
+
+      var titleEl = document.createElement("div");
+      titleEl.className = "slide-title";
+      titleEl.textContent = slide.title;
+      box.appendChild(titleEl);
+
+      if (slide.imageUrl) {
+        var img = document.createElement("img");
+        img.src = slide.imageUrl;
+        img.alt = slide.title;
+        box.appendChild(img);
+      }
+
+      var list = document.createElement("ul");
+      list.className = "desc-list";
+      if (!slide.items.length) {
+        var li0 = document.createElement("li");
+        li0.textContent = "추출된 설명 텍스트가 없습니다.";
+        list.appendChild(li0);
+      }
+      slide.items.forEach(function (it) {
+        var li = document.createElement("li");
+        var numEl = document.createElement("span");
+        numEl.className = "num";
+        numEl.textContent = it.num + ".";
+        var txtEl = document.createElement("span");
+        txtEl.className = "txt";
+        txtEl.textContent = it.text;
+        li.appendChild(numEl);
+        li.appendChild(txtEl);
+        list.appendChild(li);
+      });
+      box.appendChild(list);
+
+      slideGrid.appendChild(box);
+    });
+  }
+
+  startQaBtn.addEventListener("click", function () {
+    if (!currentSlides) return;
+    startQaBtn.disabled = true;
+    checklistEl.innerHTML = "";
+    reportCard.classList.add("hidden");
+    runQaAnimation(currentSlides);
+  });
+
+  function runQaAnimation(slides) {
+    var result = runQaChecks(slides);
+    currentQaResult = result;
+
+    var findingsByItem = {};
+    var structuralFindings = [];
+    result.findings.forEach(function (f) {
+      if (f.itemNum == null) {
+        structuralFindings.push(f);
+      } else {
+        var key = f.slideIndex + ":" + f.itemNum;
+        (findingsByItem[key] = findingsByItem[key] || []).push(f);
+      }
+    });
+
+    setStatus(qaStatus, "검토 진행 중...");
+
+    var chain = Promise.resolve();
+    result.allItems.forEach(function (it, idx) {
+      chain = chain.then(function () {
+        var row = document.createElement("li");
+        row.className = "check-row";
+
+        var icon = document.createElement("span");
+        icon.className = "icon pending";
+        icon.textContent = "";
+
+        var slideTag = document.createElement("span");
+        slideTag.className = "slide-tag";
+        slideTag.textContent = it.slideTitle;
+
+        var txt = document.createElement("span");
+        txt.className = "txt";
+        txt.textContent = it.num + ". " + it.text;
+
+        row.appendChild(icon);
+        row.appendChild(slideTag);
+        row.appendChild(txt);
+        checklistEl.appendChild(row);
+        row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+        return sleep(140).then(function () {
+          var key = it.slideIndex + ":" + it.num;
+          var itemFindings = findingsByItem[key] || [];
+          if (itemFindings.length) {
+            icon.className = "icon fail";
+            icon.textContent = "✕";
+            var note = document.createElement("span");
+            note.className = "issue-note";
+            note.textContent = itemFindings.map(function (f) { return "[" + f.type + "] " + f.detail; }).join(" · ");
+            txt.appendChild(note);
+          } else {
+            icon.className = "icon pass";
+            icon.textContent = "✓";
+          }
+        });
+      });
+    });
+
+    chain.then(function () {
+      return sleep(200);
+    }).then(function () {
+      structuralFindings.forEach(function (f) {
+        var row = document.createElement("li");
+        row.className = "check-row";
+        var icon = document.createElement("span");
+        icon.className = "icon fail";
+        icon.textContent = "✕";
+        var slideTag = document.createElement("span");
+        slideTag.className = "slide-tag";
+        slideTag.textContent = f.slideTitle;
+        var txt = document.createElement("span");
+        txt.className = "txt";
+        txt.textContent = "(구조) " + f.detail;
+        row.appendChild(icon);
+        row.appendChild(slideTag);
+        row.appendChild(txt);
+        checklistEl.appendChild(row);
+      });
+      setStatus(qaStatus, "검토 완료 — 이슈 " + result.findings.length + "건 발견", result.findings.length ? "error" : "ok");
+      renderReport(slides, result);
+      reportCard.classList.remove("hidden");
+      startQaBtn.disabled = false;
+      showToast("QA 완료: 이슈 " + result.findings.length + "건 발견됨", result.findings.length ? "error" : null);
+    });
+  }
+
+  function renderReport(slides, result) {
+    var summaryGrid = document.getElementById("summaryGrid");
+    summaryGrid.innerHTML = "";
+
+    var totalItems = result.allItems.length;
+    var failedKeys = {};
+    result.findings.forEach(function (f) {
+      if (f.itemNum != null) failedKeys[f.slideIndex + ":" + f.itemNum] = true;
+    });
+    var failedCount = Object.keys(failedKeys).length;
+    var passRate = totalItems ? Math.round(((totalItems - failedCount) / totalItems) * 100) : 100;
+
+    function addSummary(value, label, cls) {
+      var item = document.createElement("div");
+      item.className = "summary-item";
+      var v = document.createElement("div");
+      v.className = "summary-value" + (cls ? " " + cls : "");
+      v.textContent = value;
+      var l = document.createElement("div");
+      l.className = "summary-label";
+      l.textContent = label;
+      item.appendChild(v);
+      item.appendChild(l);
+      summaryGrid.appendChild(item);
+    }
+
+    addSummary(passRate + "%", "항목 통과율 (" + (totalItems - failedCount) + "/" + totalItems + ")", passRate >= 80 ? "good" : "bad");
+    addSummary(String(result.findings.length), "발견된 이슈 총 개수", result.findings.length ? "bad" : "good");
+    addSummary(String(slides.length), "검토한 화면 수", null);
+
+    var groupsEl = document.getElementById("issueGroups");
+    groupsEl.innerHTML = "";
+
+    if (!result.findings.length) {
+      var okMsg = document.createElement("div");
+      okMsg.className = "empty";
+      okMsg.textContent = "발견된 이슈가 없습니다.";
+      groupsEl.appendChild(okMsg);
+      return;
+    }
+
+    var bySeverityOrder = { high: 0, medium: 1, low: 2 };
+    var sorted = result.findings.slice().sort(function (a, b) { return bySeverityOrder[a.severity] - bySeverityOrder[b.severity]; });
+
+    var byType = {};
+    sorted.forEach(function (f) { (byType[f.type] = byType[f.type] || []).push(f); });
+
+    Object.keys(byType).forEach(function (type) {
+      var group = document.createElement("div");
+      group.className = "issue-group";
+      var h = document.createElement("h3");
+      h.textContent = type + " (" + byType[type].length + "건)";
+      group.appendChild(h);
+
+      byType[type].forEach(function (f) {
+        var item = document.createElement("div");
+        item.className = "issue-item";
+        var badge = document.createElement("span");
+        badge.className = "badge " + f.severity;
+        badge.textContent = f.severity === "high" ? "높음" : (f.severity === "medium" ? "보통" : "낮음");
+        var detail = document.createElement("div");
+        detail.className = "detail";
+        var d1 = document.createElement("div");
+        d1.textContent = f.detail;
+        var d2 = document.createElement("span");
+        d2.className = "slide-name";
+        d2.textContent = f.slideTitle + (f.itemNum != null ? " · 항목 " + f.itemNum : "");
+        detail.appendChild(d1);
+        detail.appendChild(d2);
+        item.appendChild(badge);
+        item.appendChild(detail);
+        group.appendChild(item);
+      });
+
+      groupsEl.appendChild(group);
+    });
+  }
+
+  document.getElementById("downloadCsvBtn").addEventListener("click", function () {
+    if (!currentQaResult) {
+      showToast("먼저 QA를 실행해주세요.", "error");
+      return;
+    }
+    var header = ["화면명", "항목번호", "이슈유형", "심각도", "상세내용"];
+    var rows = currentQaResult.findings.map(function (f) {
+      return [f.slideTitle, f.itemNum != null ? f.itemNum : "", f.type, f.severity, f.detail].map(csvEscape).join(",");
+    });
+    var csv = [header.join(",")].concat(rows).join("\n");
+    var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "스토리보드_QA_결과.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("downloadChecklistBtn").addEventListener("click", function () {
+    if (!currentSlides) {
+      showToast("먼저 스토리보드를 업로드해주세요.", "error");
+      return;
+    }
+    var result = buildChecklistXlsx(currentSlides);
+    if (!result.rowCount) {
+      setStatus(document.getElementById("checklistStatus"), "체크리스트로 만들 항목이 없습니다.", "error");
+      return;
+    }
+    var url = URL.createObjectURL(result.blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "스토리보드_QA_체크리스트.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setStatus(document.getElementById("checklistStatus"), "체크 항목 " + result.rowCount + "개로 체크리스트를 만들었습니다.", "ok");
+  });
+})();
+</script>
+</body>
+</html>
