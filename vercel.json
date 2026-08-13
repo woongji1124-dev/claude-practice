@@ -1,5 +1,5 @@
 {
   "redirects": [
-    { "source": "/", "destination": "/관심종목_대시보드.html", "permanent": false }
+    { "source": "/", "destination": "/스토리보드_QA_자동화.html", "permanent": false }
   ]
 }
